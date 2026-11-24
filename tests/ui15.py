@@ -1,0 +1,45 @@
+from playwright.sync_api import sync_playwright
+import pathlib, openpyxl, datetime, json
+html=pathlib.Path('/home/claude/pointview/index.html').resolve().as_uri()
+wb=openpyxl.Workbook();ws=wb.active;ws.title='Paie novembre'
+ws.append(['ÉTAT DES SALAIRES — NOVEMBRE 2026'])
+ws.append(['N°','Matricule','Prénom et nom','Type de contrat','Statut universitaire','Date de naissance','Salaire de base','Prime de risque','Prime de technicité','Avance sur salaire','Net à payer'])
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path='/usr/bin/google-chrome');ctx=b.new_context(viewport={'width':1366,'height':900},accept_downloads=True);pg=ctx.new_page()
+    LIB={'xlsx':'/home/claude/node_modules/xlsx/dist/xlsx.full.min.js','jspdf':'/home/claude/node_modules/jspdf/dist/jspdf.umd.min.js'}
+    pg.route('**/cdnjs.cloudflare.com/**',lambda r:r.fulfill(path=LIB['xlsx' if 'xlsx' in r.request.url else 'jspdf'],content_type='application/javascript') if ('xlsx' in r.request.url or 'jspdf' in r.request.url) else r.abort())
+    errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
+    pg.clock.install(time="2026-11-24T17:00:00");pg.goto(html);pg.wait_for_timeout(800)
+    pg.evaluate("S.popPaieVu=true;closeModal();S.profil=profils().find(x=>x.role==='superadmin')")
+    ags=pg.evaluate("DB.agents.filter(a=>enPoste(a,today())&&!estFonctionnaire(a)).slice(0,2).map(a=>[a.mat,a.prenom+' '+a.nom])")
+    ws.append([1,ags[0][0],ags[0][1],'CMSAS','Universitaire',datetime.date(1985,3,12),350000,40000,25000,10000,0])
+    ws.append([2,ags[1][0],ags[1][1],'CDD','Non universitaire','',300000,'',25000,'',0])
+    ws.append([3,'999001','Fatou Ndiaye Sarr','Contrat spécial','Universitaire','04/07/1990',275000,'',15000,'',0])
+    ws.append([4,'','Ligne sans matricule','','','','','','','',''])
+    wb.save('/tmp/import.xlsx')
+    pg.evaluate("S.page='agents';render()");pg.wait_for_timeout(300)
+    pg.set_input_files('input[data-src=agents]','/tmp/import.xlsx');pg.wait_for_selector('text=Importer depuis Excel',timeout=20000);pg.wait_for_timeout(400)
+    print('map:',pg.evaluate("S.ix.map.join(' | ')"))
+    print(pg.inner_text('#ix_sum'))
+    pg.locator('.modal').first.screenshot(path='/tmp/ix1.png') if pg.locator('.modal').count() else pg.screenshot(path='/tmp/ix1.png',full_page=True)
+    pg.click('[data-act=ixOk]');pg.wait_for_timeout(500)
+    print(pg.evaluate("""(()=>{const a=ag(%s),n=DB.agents.find(x=>x.mat==='999001'),t=DB.rubriques.find(r=>r.nom==='Prime de technicité'),v=DB.rubriques.find(r=>r.nom==='Avance sur salaire');
+     return JSON.stringify({a:[a.typeContrat,a.univ,a.naissance,a.salaireBase,a.primeRisque,a.paie],nouveau:n&&[n.prenom,n.nom,n.typeContrat,n.univ,n.naissance,n.salaireBase,n.serviceId],tech:t&&t.type,av:v&&v.type,contrats:DB.listes.typesContrat})})()"""%json.dumps(ags[0][0])))
+    pg.screenshot(path='/tmp/ix2.png')
+    pg.evaluate("closeModal();S.page='remun';S.rem.tab='rub';render()");pg.wait_for_timeout(300)
+    t=pg.evaluate("DB.rubriques.find(r=>r.nom==='Prime de technicité').id")
+    pg.check(f'input[data-chg=rbLim][data-r="{t}"][data-v="CMSAS"]');pg.wait_for_timeout(300)
+    print('tech CMSAS seulement:',pg.evaluate(f"[ag({json.dumps(ags[0][0])}),ag({json.dumps(ags[1][0])})].map(a=>bulletin(a,today().slice(0,7)).gains.some(g=>g[2]==='{t}'))"))
+    pg.locator('h2:has-text("5 · Types de contrat")').locator('..').locator('..').screenshot(path='/tmp/ix3.png')
+    # export générique
+    pg.evaluate("S.page='agents';render()");pg.wait_for_timeout(400)
+    with pg.expect_download() as d: pg.locator('.txbar [data-act=tXls]').first.click()
+    d.value.save_as('/tmp/agents.xlsx');w=openpyxl.load_workbook('/tmp/agents.xlsx').active;print('export agents:',w.max_row-1,'lignes', [c.value for c in w[1]][:5], [c.value for c in w[2]][:3])
+    with pg.expect_download() as d: pg.locator('.txbar [data-act=tPdf]').first.click()
+    d.value.save_as('/tmp/agents.pdf');print('pdf octets', pathlib.Path('/tmp/agents.pdf').stat().st_size)
+    pg.click('[data-act=ixExp]');pg.wait_for_timeout(300);pg.locator('.modal').first.screenshot(path='/tmp/ix4.png') if pg.locator('.modal').count() else None
+    with pg.expect_download() as d: pg.click('[data-act=ixExpGo][data-f=xlsx]')
+    d.value.save_as('/tmp/rub.xlsx');w=openpyxl.load_workbook('/tmp/rub.xlsx').active;print('export rubriques:',w.max_row-1,'lignes',[c.value for c in w[1]])
+    print('barres export sur la page agents:',pg.locator('.txbar').count())
+    print('erreurs:',errs)
+    b.close()
