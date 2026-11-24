@@ -151,6 +151,12 @@ textarea{width:100%}
 .recap{display:flex;flex-direction:column;gap:12px}.recapHd{display:flex;align-items:center;gap:12px}.recapHd b{display:block;font-size:17px}
 .recapDl{grid-template-columns:repeat(2,minmax(0,1fr))}.recapDl dd.big{font-size:28px;font-weight:800}.recapDl dd{text-transform:none}
 .recapEdit{border:1px solid var(--bord);border-radius:12px;padding:8px 12px}.recapEdit>summary{cursor:pointer;font-weight:700;color:var(--bleu)}.recapEdit .horo{margin-top:10px;border:0;padding:0;background:none}
+.kSearch{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}@media (max-width:620px){.kSearch{grid-template-columns:1fr}}
+.kiosk .kSearch input{font-size:16px;text-align:left;letter-spacing:0;padding:10px 12px}
+.klist{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow:auto;padding:2px}
+.kItem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;padding:8px 10px;border:1px solid var(--bord);border-radius:12px;background:var(--carte);cursor:pointer}
+.kItem:hover,.kItem:focus-visible{border-color:var(--bleu);background:var(--bleu-pale)}.kItem .avatar{width:38px;height:38px;font-size:13px;flex:none}
+.kItem>span:not(.pill){display:flex;flex-direction:column;min-width:0;flex:1}.kItem>.pill{flex:none}.kItem small{color:var(--gris);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
@@ -603,12 +609,13 @@ PAGES.pointage=()=>{
  const borne=!can('pointer')||S.tab==='borne';
  if(borne)return`<div class="head"><div><h1>Pointage</h1><div class="sub">Page ouverte par le QR code du service · ${fdate(today())}</div></div><span class="sp"></span>${sc.length>1?`<select id="ksvc" data-chg="ksvc" aria-label="Service de la borne">${opt(DB.services.filter(s=>sc.includes(s.id)),S.kSvc,s=>[s.id,'Borne : '+s.nom])}</select>`:`<span class="pill info">Borne : ${esc(svc(S.kSvc).nom)}</span>`}</div>${tabs}
  <div class="card kiosk"><h2>Identification de l'agent</h2>
-  <label class="field">Matricule<input id="kmat" inputmode="numeric" autocomplete="off" placeholder="ex. ${actifs([S.kSvc])[1]?.mat||''}" data-inp="kmat" value="${role==='agent'?S.profil.agentId:''}"></label>
+  ${role==='agent'?'':`<div class="kSearch"><label class="field">Rechercher un agent<input id="kq" type="search" name="kq-recherche-agent" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Nom, prénom, téléphone ou matricule" value="${esc(S.kQ||'')}"></label>
+   <label class="field">Service<select id="kfsvc" data-chg="kfsvc" aria-label="Service">${sc.length>1?`<option value="*"${S.kF==='*'?' selected':''}>Tous mes services</option>`:''}${opt(DB.services.filter(x=>sc.includes(x.id)),S.kF||S.kSvc,x=>[x.id,x.nom])}</select></label></div>
+  <div id="klist"></div>`}
   <div id="kid"></div>
-  <label class="field">Code PIN personnel<input id="kpin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••"></label>
   ${horodatageHtml()}
   <div class="grid" style="grid-template-columns:1fr 1fr"><button class="btn v xl" data-act="kpoint" data-t="arr">Pointer l'arrivée</button><button class="btn xl" data-act="kpoint" data-t="dep">Pointer le départ</button></div>
-  <div class="sub">Par défaut, l'heure actuelle est enregistrée. Un récapitulatif modifiable s'affiche avant l'enregistrement. En démonstration, le PIN de tous les agents est 1234.</div></div>`;
+  <div class="sub">Choisissez l'agent, puis l'heure (l'heure actuelle par défaut). Un récapitulatif modifiable s'affiche avant l'enregistrement. Chaque pointage garde le nom du compte qui l'a saisi.</div></div>`;
  const T=today(),now=new Date(),rows=[];
  actifs([S.kSvc]).forEach(a=>[addDays(T,-1),T].forEach(d=>{const r=etat(a.id,d,now);if(d===T?(r.prog>0||r.abs):(r.prog>0&&r.e>now&&!r.abs)||(r.p&&r.p.arr&&!r.p.dep&&r.statut!=='incomplet'))rows.push(r)}));
  rows.sort((a,b)=>(a.s||0)-(b.s||0));const e=effectifService(svc(S.kSvc));
@@ -634,10 +641,16 @@ function soldeInfo(){const el=$('#a_solde'),id=pickId('a_ag'),sel=document.getEl
 function materInfo(t){const el=$('#mt_res');if(!el)return;if(t&&t.id==='mt_dpa'&&t.value)document.getElementById('mt_deb').value=addDays(t.value,-DB.params.materPre*7);
  const dpa=val('mt_dpa'),r=dpa?materCalc({dpa,reel:val('mt_reel'),debut:val('mt_deb'),prolong:+val('mt_pro')||0},DB.params):null;
  el.innerHTML=!r?"Saisissez la date présumée d'accouchement pour lancer le calcul.":r.err?esc(r.err):`<b>Congé du ${dfr(r.debut)} au ${dfr(r.fin)}</b> : ${r.jours} jours (${Math.floor(r.jours/7)} semaines${r.jours%7?' et '+r.jours%7+' j':''}) — ${r.pre} jours avant l'accouchement, ${r.post} jours après. Reprise du travail le <b>${dfr(r.reprise)}</b>.`;return r}
-function kioskInfo(){const m=val('kmat').trim(),a=DB.agents.find(x=>x.mat===m),el=$('#kid');if(!el)return;
- if(!m){el.innerHTML='';return}if(!a){el.innerHTML=m.length>=6?'<div class="pill crit">Matricule inconnu</div>':'';return}
+/* Recherche multicritère de l'agent à la borne : nom, prénom, téléphone, matricule, service */
+const kNorm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function kAgents(){const sc=scope(),f=S.kF||S.kSvc,ids=f==='*'?sc:[f],q=kNorm(S.kQ).trim(),qd=(S.kQ||'').replace(/\D/g,'');
+ return actifs(ids).filter(a=>!q||kNorm(`${a.prenom} ${a.nom} ${a.nom} ${a.prenom} ${a.mat}`).includes(q)||(qd.length>=3&&(String(a.tel||'').replace(/\D/g,'').includes(qd)||String(a.mat).includes(qd)))).sort((x,y)=>nomA(x).localeCompare(nomA(y),'fr'))}
+function kListe(){const el=$('#klist');if(!el)return;if(S.kAgent){el.innerHTML='';return}const L=kAgents(),T=today(),max=40;
+ el.innerHTML=L.length?`<div class="klist">${L.slice(0,max).map(a=>{const r=etat(a.id,T);return`<button type="button" class="kItem" data-act="kChoix" data-id="${a.id}">${avatar(a)}<span><b>${esc(nomA(a))}</b><small>${a.mat} · ${esc(fnom(a))}${(S.kF==='*')?' · '+esc(svc(a.serviceId).code):''}${a.tel?' · '+esc(a.tel):''}</small></span>${pill(r.statut)}</button>`}).join('')}</div><div class="sub">${L.length>max?`${max} premiers sur ${L.length} — précisez la recherche`:`${L.length} agent(s)`}</div>`:'<div class="empty">Aucun agent ne correspond à la recherche.</div>'}
+function kioskInfo(){const el=$('#kid');if(!el)return;const a=S.profil.role==='agent'?ag(S.profil.agentId):S.kAgent&&ag(S.kAgent);
+ if(!a){el.innerHTML='';return}
  const T=today(),r=etat(a.id,T),y=etat(a.id,addDays(T,-1)),enCours=y.p&&y.p.arr&&!y.p.dep&&y.statut!=='incomplet'?y:r;
- el.innerHTML=`${a.photo?`<div style="text-align:center;margin-bottom:8px">${avatar(a)}</div>`.replace('class="avatar"','class="avatar" style="display:inline-block;width:88px;height:88px"'):''}<dl class="ident"><dt>Nom et prénom</dt><dd>${esc(nomA(a))}</dd><dt>Service</dt><dd>${esc(svc(a.serviceId).nom)}</dd><dt>Catégorie</dt><dd>${esc(poste(a.posteId).nom)}</dd><dt>Poste</dt><dd>${esc(fnom(a))}</dd><dt>Vacation prévue</dt><dd>${enCours.vac?esc(enCours.vac.nom)+(enCours.s?` · ${hm(enCours.s)} – ${hm(enCours.e)}`:''):'Non programmé'}</dd><dt>Arrivée réelle</dt><dd>${hm(enCours.p&&enCours.p.arr)}</dd><dt>Départ réel</dt><dd>${hm(enCours.p&&enCours.p.dep)}</dd><dt>Statut</dt><dd>${pill(enCours.statut)}</dd></dl>`}
+ el.innerHTML=`${a.photo?`<div style="text-align:center;margin-bottom:8px">${avatar(a)}</div>`.replace('class="avatar"','class="avatar" style="display:inline-block;width:88px;height:88px"'):''}<dl class="ident"><dt>Nom et prénom</dt><dd>${esc(nomA(a))}</dd><dt>Service</dt><dd>${esc(svc(a.serviceId).nom)}</dd><dt>Catégorie</dt><dd>${esc(poste(a.posteId).nom)}</dd><dt>Poste</dt><dd>${esc(fnom(a))}</dd><dt>Vacation prévue</dt><dd>${enCours.vac?esc(enCours.vac.nom)+(enCours.s?` · ${hm(enCours.s)} – ${hm(enCours.e)}`:''):'Non programmé'}</dd><dt>Arrivée réelle</dt><dd>${hm(enCours.p&&enCours.p.arr)}</dd><dt>Départ réel</dt><dd>${hm(enCours.p&&enCours.p.dep)}</dd><dt>Statut</dt><dd>${pill(enCours.statut)}</dd></dl>${S.profil.role==='agent'?'':'<div class="row" style="justify-content:flex-end;margin-top:6px"><button type="button" class="btn g s" data-act="kChange">Changer d’agent</button></div>'}`}
 
 PAGES.planning=()=>{
  const sc=scope(),F=S.pl,ed=can('planifier'),T=today();if(!F.svc||(F.svc!=='all'&&!sc.includes(F.svc))||(F.svc==='all'&&sc.length<2))F.svc=sc[0];
@@ -939,7 +952,7 @@ const ACT={
 };
 const CHG={
  profil:el=>{S.profil=profils().find(p=>p.id===el.value);S.svc='all';S.kSvc=null;S.tab='tableau';Object.assign(S.pl,{svc:null,agent:'',poste:'',type:''});S.page=ROLES[S.profil.role].menu[0];render()},
- svc:el=>{S.svc=el.value;render()},date:el=>{if(el.value){S.date=el.value;render()}},ksvc:el=>{S.kSvc=el.value;render()},
+ svc:el=>{S.svc=el.value;render()},date:el=>{if(el.value){S.date=el.value;render()}},ksvc:el=>{S.kSvc=el.value;S.kF=el.value;S.kAgent=null;render()},kfsvc:el=>{S.kF=el.value;if(el.value!=='*')S.kSvc=el.value;S.kAgent=null;kioskInfo();kListe()},
  plan:el=>{const k=el.dataset.k,[id,d]=k.split('|');if(PIX.get(k)&&PIX.get(k).arr){toast('Un pointage existe déjà ce jour : le planning ne peut plus être modifié.','err');return render()}
   if(el.value)DB.planning[k]=el.value;else delete DB.planning[k];audit('Modification du planning',`${nomA(ag(id))} — ${d} : ${el.value||'non programmé'}`);save();render()},
  all:el=>document.querySelectorAll('.ck').forEach(c=>c.checked=el.checked),
@@ -2295,18 +2308,20 @@ Object.assign(ACT,{
  kqPas:d=>{kq().pas=d.v;S.kr?kqRecapMaj():horoRefresh()},
  kqPlus:d=>{const q=kq(),t=at(q.date,`${p2(q.h??0)}:${p2(q.m??0)}`);t.setMinutes(t.getMinutes()+(+d.v));q.date=dkey(t);q.mois=q.date.slice(0,7);q.h=t.getHours();q.m=t.getMinutes();S.kr?kqRecapMaj():horoRefresh()},
  krType:d=>{S.kr.type=d.v;kqRecapMaj()},
- kpoint:d=>{const a=DB.agents.find(x=>x.mat===val('kmat').trim());if(!a)return toast('Matricule inconnu. Vérifiez la saisie.','err');
+ kpoint:d=>{const a=S.profil.role==='agent'?ag(S.profil.agentId):S.kAgent&&ag(S.kAgent);if(!a)return toast('Choisissez d’abord l’agent dans la liste.','err');
   if(S.profil.role==='agent'&&a.id!==S.profil.agentId)return toast('Vous ne pouvez pas pointer pour un autre agent.','err');
-  if(a.serviceId!==S.kSvc)return toast(`Cette borne est celle du service ${svc(S.kSvc).nom}. Pointage refusé pour un agent d'un autre service.`,'err');
-  if(val('kpin')!==a.pin){audit('Anomalie de pointage',`PIN erroné pour ${nomA(a)}`);save();return toast('Code PIN incorrect. La tentative est signalée au responsable.','err')}
+  if(!scope().includes(a.serviceId))return toast('Cet agent n’appartient pas à vos services.','err');
   S.kr={agentId:a.id,type:d.t,motif:''};kqRecap()},
+ kChoix:d=>{S.kAgent=d.id;S.kSvc=ag(d.id).serviceId;kListe();kioskInfo();const b=document.querySelector('.kiosk .horo');if(b)b.scrollIntoView({block:'nearest',behavior:'smooth'})},
+ kChange:()=>{S.kAgent=null;kioskInfo();kListe();const q=document.getElementById('kq');if(q)q.focus()},
  kConf:()=>{const R=S.kr;if(!R)return closeModal();const a=ag(R.agentId),q=kq(),now=new Date(),decl=kqDecl(),m=document.getElementById('krMotif'),motif=m?m.value.trim():'';
   if(decl>new Date(now.getTime()+6e4))return toast('L\'heure choisie est dans le futur.','err');
   if(dkey(decl)<addDays(today(),-KQ_JOURS))return toast(`Une heure déclarée ne peut pas remonter à plus de ${KQ_JOURS} jours.`,'err');
   const declaree=q.mode==='choix'&&Math.abs(now-decl)/6e4>paramsFor(a.serviceId).saisieTardive;if(declaree&&!motif)return toast('Indiquez le motif de l\'heure déclarée.','err');
   const r=pointer(a.id,R.type,{mode:declaree?'declare':'borne',decl:q.mode==='choix'?decl:undefined,motif});if(!res(r))return;
-  S.kr=null;S.kq=null;closeModal();const pin=document.getElementById('kpin');if(pin)pin.value='';render();if(S.profil.role!=='agent'){const k=document.getElementById('kmat');if(k)k.value=''}else kioskInfo()}
+  S.kr=null;S.kq=null;closeModal();if(S.profil.role!=='agent'){S.kAgent=null;S.kQ=''}render()}
 });
+const renderAvantBorne=render;render=function(){renderAvantBorne();if(typeof document!=='undefined'&&document.getElementById('kid')){kListe();kioskInfo()}};
 function kqRecapMaj(){const m=document.getElementById('krMotif');if(m&&S.kr)S.kr.motif=m.value;kqRecap()}
 if(typeof document!=='undefined')document.addEventListener('click',e=>{const g=e.target.closest('.cadran .cn');if(!g)return;const q=kq();if(g.dataset.h!=null){q.h=+g.dataset.h;q.pas='m'}else if(g.dataset.m!=null)q.m=+g.dataset.m;S.kr?kqRecapMaj():horoRefresh()});
 if(typeof document!=='undefined')document.addEventListener('change',e=>{if(e.target.id!=='kqTime'||!e.target.value)return;const[h,m]=e.target.value.split(':').map(Number);const q=kq();q.h=h;q.m=m;S.kr?kqRecapMaj():horoRefresh()});
@@ -2315,7 +2330,7 @@ function init(){
  load();S.profil=profils()[0];
  document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&ACT[b.dataset.act])ACT[b.dataset.act](b.dataset,b,e)});
  document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.add&&t.value==='__add__')return openAdd(t.dataset.add,t);const k=e.target.dataset&&e.target.dataset.chg;if(k&&CHG[k])CHG[k](e.target)});
- document.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.inp;if(k==='kmat')kioskInfo();if(k==='mater')materInfo(e.target);if(k==='absAgent')soldeInfo();if(k==='org')orgInp(e.target);if(k==='pecAg')pecInfo();if(k==='pecLM')pecLM(e.target);if(k==='pcCalc')pcCalc();if(k==='demAgent'&&pickId('dm_ag'))demInfo();
+ document.addEventListener('input',e=>{if(e.target.id==='kq'){S.kQ=e.target.value;S.kAgent=null;kioskInfo();kListe();return}const k=e.target.dataset&&e.target.dataset.inp;if(k==='mater')materInfo(e.target);if(k==='absAgent')soldeInfo();if(k==='org')orgInp(e.target);if(k==='pecAg')pecInfo();if(k==='pecLM')pecLM(e.target);if(k==='pcCalc')pcCalc();if(k==='demAgent'&&pickId('dm_ag'))demInfo();
   if(k==='dec')S.dec[e.target.dataset.k]=e.target.value;
   if(k==='decL'){const l=S.dec.lignes[+e.target.dataset.i],kk=e.target.dataset.k;l[kk]=kk.startsWith('periode')?e.target.value:Math.max(0,parseFloat(e.target.value)||0);const c=document.getElementById('dc_t'+e.target.dataset.i);if(c)c.textContent=nj(l.jours+l.reliquat-l.deduction)}
   if(k==='entete'){DB.entete[e.target.dataset.k]=e.target.value;save()}
@@ -2323,7 +2338,7 @@ function init(){
   if(k==='bulL'){const l=S.bul.lignes[+e.target.dataset.i],kk=e.target.dataset.k;if(kk==='nom')l.nom=e.target.value;else{l.montant=Math.max(0,+e.target.value||0);if(l.type==='retenue')l.manuel=true}const t=bulTot();S.bul.lignes.forEach((x,i)=>{const c=document.getElementById('bl_m'+i);if(c&&c!==e.target&&x.type==='retenue'&&x.pct!=null&&!x.manuel)c.value=x.montant});const z=document.getElementById('bl_tot');if(z)z.innerHTML=bulTotHTML(t)}
   if(k==='q'){const q=e.target.value.trim().toLowerCase();document.querySelectorAll('tr[data-s]').forEach(tr=>tr.hidden=!tr.dataset.s.includes(q))}});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(ADD)ACT.addCancel();else closeModal()}});
- render();if(S.profil.role==='agent')kioskInfo();
+ render();kioskInfo();kListe();
  setInterval(()=>{if(!$('#layer').innerHTML&&['dashboard','alertes'].includes(S.page))render()},60000);
 }
 if(typeof document!=='undefined'){if(CL){
