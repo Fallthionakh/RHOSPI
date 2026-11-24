@@ -1,0 +1,14 @@
+const fs=require('fs'),vm=require('vm');
+const js=fs.readFileSync(process.argv[2],'utf8').match(/<script>\n"use strict";([\s\S]*)<\/script>/)[1];
+const ctx={console,setTimeout,clearTimeout,lib:require('jspdf'),fs,Buffer};vm.createContext(ctx);
+vm.runInContext(js+`;globalThis.T=function(){const out=[],ok=(n,c)=>out.push((c?'OK  ':'FAIL ')+n);
+DB=seed(new Date());index();S.profil={role:'rh'};const T=today(),a=DB.agents[12],m=DB.demandes[0];
+ok('demande d\\'exemple en cours',m.statut==='en cours'&&demPill(m).includes('Demande ✓'));
+ok('alerte demande à traiter',alertes(DB.services.map(s=>s.id)).some(x=>x.key==='dmd|dm1'));
+const u=DB.agents.find(z=>z.id===DB.decisions[0].lignes[0].agentId),p=demProp(u,droit('ADM'));ok('proposition : suite de la dernière décision',p.du===DB.decisions[0].lignes[0].periodeFin&&p.au===addYears(p.du,1)&&p.num==='00124'&&p.jours===30);
+const x={id:'DX',numero:'900',date:T,droitId:'RAY',lignes:[{agentId:a.id,total:30}]};ok('décision d\\'un autre congé : statut inchangé',majDemandes(x)===0&&m.statut==='en cours');
+x.droitId='ADM';DB.decisions.push(x);ok('décision établie : statut mis à jour',majDemandes(x)===1&&m.statut==='décision établie'&&m.decisionId==='DX'&&demPill(m).includes('n° 900'));
+const h=PAGES.demandes();ok('page : demandes affichées',h.includes('Demandes de décision')&&!h.includes('undefined'));
+S.profil=profils().find(z=>z.role==='agent');ok('mon espace : bouton de demande',PAGES.moi().includes('Demander une décision de congé'));
+DB.entete.signataireTitre='La Directrice';DB.entete.ville='Thiès';m.decPrecNum='2151';m.decPrecDate='2025-12-08';const doc=demandePDF(m,lib);fs.writeFileSync('/tmp/demande.pdf',Buffer.from(doc.output('arraybuffer')));
+return out.join('\\n')}`,ctx);console.log(ctx.T());

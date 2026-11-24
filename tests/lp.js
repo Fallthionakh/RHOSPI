@@ -1,0 +1,18 @@
+const fs=require('fs'),vm=require('vm');
+const js=fs.readFileSync(process.argv[2],'utf8').match(/<script>\n"use strict";([\s\S]*)<\/script>/)[1];
+const el=()=>({innerHTML:'',value:'',style:{},dataset:{},checked:false});
+const ctx={console,setTimeout,clearTimeout,setInterval:()=>0,lib:require('jspdf'),fs,Buffer,document:{querySelector:el,querySelectorAll:()=>[],getElementById:()=>null,addEventListener(){},createElement:el,body:{appendChild(){}}}};vm.createContext(ctx);
+vm.runInContext(js+`;globalThis.T=function(){const out=[],ok=(n,c)=>out.push((c?'OK  ':'FAIL ')+n);
+toast=function(){};render=function(){};DB=seed(new Date());index();S.profil={role:'superadmin'};const T=today(),d=addDays(T,-2),a=DB.agents.find(z=>z.serviceId==='LAB'&&z.posteId==='TLAB');
+DB.absences=DB.absences.filter(x=>x.agentId!==a.id);DB.pointages=DB.pointages.filter(p=>!(p.agentId===a.id&&p.date===d));DB.planning[a.id+'|'+d]='J';
+DB.pointages.push({id:'t',agentId:a.id,date:d,arr:at(d,'08:25').toISOString(),dep:at(d,'17:40').toISOString(),arrMode:'borne',depMode:'borne'});index();
+let z=presenceLignes([a.id],d,d)[0];ok('retard 25 min, présence 9 h 15, écart +1 h 15, heures sup. 1 h 15',z.r.retard===25&&z.presence===555&&z.ecart===75&&z.hs===75);
+DB.pointages.find(p=>p.id==='t').dep=at(d,'16:05').toISOString();z=presenceLignes([a.id],d,d)[0];ok('écart −20 min : pas d\\'heures sup.',z.ecart===-20&&z.hs===0);
+DB.pointages.find(p=>p.id==='t').dep=at(d,'16:10').toISOString();DB.pointages.find(p=>p.id==='t').arr=at(d,'08:00').toISOString();z=presenceLignes([a.id],d,d)[0];ok('écart +10 min sous le seuil de 15 : pas d\\'heures sup.',z.ecart===10&&z.hs===0);
+const n=DB.agents.find(x=>x.serviceId==='URG'&&x.posteId==='INF'),dn=addDays(T,-3);DB.absences=DB.absences.filter(x=>x.agentId!==n.id);DB.planning[n.id+'|'+dn]='N';DB.pointages=DB.pointages.filter(p=>!(p.agentId===n.id&&p.date===dn));DB.pointages.push({id:'n',agentId:n.id,date:dn,arr:at(dn,'16:00').toISOString(),dep:at(addDays(dn,1),'09:00').toISOString()});index();
+z=presenceLignes([n.id],dn,dn)[0];ok('garde de nuit : départ le lendemain, +1 h de sup.',z.ecart===60&&z.hs===60&&presenceTSV([z],false)[1][5].startsWith(addDays(dn,1).slice(8)+'/'));
+S.agentId=a.id;S.lp=null;const h=PAGES.agent();ok('fiche agent : liste de présence',h.includes('Liste de présence')&&h.includes('Heures sup.')&&h.indexOf('Liste de présence')<h.indexOf('Historique des affectations'));
+S.rap.agentId='';S.rap.vue='presence';S.svc='LAB';let r=PAGES.rapports();ok('rapports : liste de présence du service',r.includes('Liste de présence — Laboratoire')&&r.includes('Écart')&&!r.includes('undefined')&&!r.includes('NaN'));
+S.svc='all';r=PAGES.rapports();ok('rapports : tous les services ('+S.lpL.length+' lignes)',S.lpL.length>500&&S.tsv[0][0]==='Agent');S.rap.vue='synthese';ok('bascule vers la synthèse',PAGES.rapports().includes('Synthèse par service'));
+fs.writeFileSync('/tmp/lp.pdf',Buffer.from(presencePDF(presenceLignes(DB.agents.filter(x=>x.serviceId==='LAB').map(x=>x.id),addDays(T,-6),T),'LISTE DE PRÉSENCE','Laboratoire',true,lib).output('arraybuffer')));
+return out.join('\\n')}`,ctx);console.log(ctx.T());

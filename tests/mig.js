@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm');
+const js=fs.readFileSync(process.argv[2],'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
+const ctx={console,setTimeout,clearTimeout};vm.createContext(ctx);
+vm.runInContext(js+`;globalThis.T=function(){const out=[],ok=(n,c)=>out.push((c?'OK  ':'FAIL ')+n);
+DB=seed(new Date());['fonctions','listes','paramsSvc','vacSvc'].forEach(k=>delete DB[k]);DB.agents.forEach(a=>delete a.fonctionId);DB.affectations.forEach(x=>delete x.fonctionId);
+const n=DB.pointages.length;migrate(DB);index();S.profil={role:'superadmin'};
+ok('anciennes données migrées sans perte',DB.pointages.length===n&&DB.agents.every(a=>fonc(a.fonctionId)));
+ok('major → poste Major',fnom(DB.agents.find(a=>a.posteId==='MAJ'))==='Major');
+const a=DB.agents[5];ok('mouvement de poste seul',mouvement(a.id,a.serviceId,a.posteId,today(),'Nomination','',  'F2').ok&&fnom(a)==="Chef d'unité"&&DB.affectations.filter(x=>x.agentId===a.id).length===2);
+ok('page catégories et postes',PAGES.postes().includes('Caissier')&&PAGES.agents().includes('Catégorie socio-professionnelle'));
+return out.join('\\n')}`,ctx);console.log(ctx.T());

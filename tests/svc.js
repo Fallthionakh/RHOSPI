@@ -1,0 +1,18 @@
+const fs=require('fs'),vm=require('vm');
+const js=fs.readFileSync(process.argv[2],'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
+const ctx={console,setTimeout,clearTimeout};vm.createContext(ctx);
+vm.runInContext(js+`;globalThis.T=function(){const out=[],ok=(n,c)=>out.push((c?'OK  ':'FAIL ')+n);
+const now=new Date('2026-11-16T10:05:00');DB=seed(now);DB.paramsSvc={};DB.vacSvc={};index();S.profil={role:'superadmin'};
+const u=DB.agents.find(a=>a.serviceId==='URG'&&a.posteId==='MAJ').id,m=DB.agents.find(a=>a.serviceId==='MAT'&&a.posteId==='MAJ').id;
+for(const a of [u,m]){DB.pointages=DB.pointages.filter(p=>p.agentId!==a);DB.planning[a+'|2026-11-16']='J';DB.pointages.push({id:a,agentId:a,date:'2026-11-16',arr:new Date('2026-11-16T08:08:00').toISOString()})}index();
+ok('défaut : 8 min toléré partout',etat(u,'2026-11-16',now).retard===0&&etat(m,'2026-11-16',now).retard===0);
+DB.paramsSvc.URG={tolerance:5};
+ok('URG tolérance 5 : retard 8',etat(u,'2026-11-16',now).retard===8&&etat(u,'2026-11-16',now).statut==='retard');ok('MAT inchangé',etat(m,'2026-11-16',now).retard===0);
+DB.vacSvc.MAT={J:{debut:'07:30',fin:'15:30'}};
+let r=etat(m,'2026-11-16',now);ok('MAT jour 07:30 : retard 38',r.retard===38&&r.s.getHours()===7);ok('URG garde 08:00',etat(u,'2026-11-16',now).s.getHours()===8);
+DB.vacations.push({code:'M',nom:'Matin',debut:'07:00',fin:'13:00',travail:true,pause:0,serviceId:'URG',actif:true});
+ok('vacation M visible URG seulement',vacsFor('URG').some(v=>v.code==='M')&&!vacsFor('MAT').some(v=>v.code==='M'));
+DB.planning[u+'|2026-11-16']='M';r=etat(u,'2026-11-16',now);ok('M : 360 min programmées, retard 68',r.prog===360&&r.retard===68);
+S.pSvc='URG';ok('page paramètres service',PAGES.params().includes('Propre à Urgences'));S.pSvc='';ok('page paramètres établissement',!PAGES.params().includes('undefined'));
+S.pl.svc='URG';ok('planning URG propose M',PAGES.planning().includes('>M</option>'));
+return out.join('\\n')}`,ctx);console.log(ctx.T());

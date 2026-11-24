@@ -1,0 +1,20 @@
+const fs=require('fs'),vm=require('vm');
+const js=fs.readFileSync(process.argv[2],'utf8').match(/<script>\n"use strict";([\s\S]*)<\/script>/)[1];
+const vals={};const el=id=>({innerHTML:'',value:vals[id]||'',style:{},dataset:{},checked:false});
+const RD=Date,FIX=new RD(2026,10,17,23,7).getTime();
+class FD extends RD{constructor(...a){a.length?super(...a):super(FIX)}static now(){return FIX}}
+const ctx={vals,Date:FD,console,setTimeout,clearTimeout,setInterval:()=>0,fs,Buffer,document:{querySelector:()=>el(),querySelectorAll:()=>[],getElementById:el,addEventListener(){},createElement:()=>el(),body:{appendChild(){}}}};vm.createContext(ctx);
+vm.runInContext(js+`;globalThis.T=function(){const out=[],ok=(n,c)=>out.push((c?'OK  ':'FAIL ')+n);let M='';toast=function(m){M=m};render=function(){};let H='';modal=function(t,b){H=t+b};
+DB=seed(new Date(2026,10,10,9));index();S.profil={role:'superadmin'};const all=DB.services.map(s=>s.id);
+let a=alertes(all).find(x=>x.key.startsWith('sous|URG'));ok('texte URG explique le planning insuffisant',a.texte.includes('il manque 1 agent'));
+ACT.alerteOuvrir({k:a.key});ok('modal ouvert avec renfort',H.includes('Programmer un renfort')&&H.includes('Présent')&&!H.includes('undefined'));
+const prog=effectifService(svc('URG')).programmes;prog.forEach(r=>{vals['so_h_'+r.agentId]='16:00';ACT.sousArr({id:r.agentId,s:'URG'})});
+ok('2 présents, alerte toujours là (planning)',effectifService(svc('URG')).presents.length===2&&alertes(all).some(x=>x.key.startsWith('sous|URG')));
+const c=renfortsPossibles('URG');ok('candidats renfort: '+c.length,c.length>0);
+vals.so_ag=c[0].id;vals.so_vac='N';vals.so_pr='1';vals.so_h='22:30';ACT.sousRenfort({s:'URG'});
+ok('renfort pointé => alerte levée: '+M,!alertes(all).some(x=>x.key.startsWith('sous|URG'))&&H.includes('alerte est levée'));
+const m=alertes(all).find(x=>x.key.startsWith('sous|MAT'));ok('MAT texte non pointés',m.texte.includes('2 agent(s) programmé(s) non pointé(s)'));
+effectifService(svc('MAT')).programmes.forEach(r=>{vals['so_h_'+r.agentId]='16:00';ACT.sousArr({id:r.agentId,s:'MAT'})});ok('MAT levée après pointage',!alertes(all).some(x=>x.key.startsWith('sous|MAT')));
+const p=DB.pointages.find(x=>x.agentId===effectifService(svc('MAT')).programmes[0].agentId&&x.date===today());corriger(p.id,p.arr,at(addDays(today(),1),'08:00').toISOString(),'test');
+ok('départ futur saisi en correction: toujours en poste',effectifService(svc('MAT')).presents.length===2);
+return out.join('\\n')}`,ctx);console.log(ctx.T());

@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm');
+const js=fs.readFileSync(process.argv[2],'utf8').match(/<script>\n"use strict";([\s\S]*)<\/script>/)[1];
+const ctx={console,setTimeout,clearTimeout};vm.createContext(ctx);
+vm.runInContext(js+`;globalThis.T=function(){const out=[],ok=(n,c)=>out.push((c?'OK  ':'FAIL ')+n);
+DB=seed(new Date());index();S.profil={role:'superadmin'};const T=today(),F=S.pl;
+F.svc='all';let h=PAGES.planning();ok('tous les services : 35 agents',h.includes('35 agent(s)'));
+F.svc='URG';F.type='N';h=PAGES.planning();ok('filtre type Nuit',h.includes('Agents en Nuit')&&!h.includes('undefined'));
+F.type='';F.poste='F3';h=PAGES.planning();ok('filtre poste Major : 1 agent',h.includes('1 agent(s)'));
+F.poste='';F.agent=DB.agents[2].id;h=PAGES.planning();ok('filtre agent',h.includes('1 agent(s)'));
+F.agent='';F.vue='jour';F.date=T;h=PAGES.planning();ok('vue jour',h.includes('Situation du jour')&&h.includes('9 agent(s)'));
+const as=actifs(['LAB']),du=addDays(T,1),au=addDays(T,14);const r=programmer(as,du,au,[6,0],'G');ok('série : garde les week-ends ('+r.n+' cases)',r.n===as.length*4&&as.every(a=>[...Array(14)].every((_,i)=>{const d=addDays(du,i),we=[0,6].includes(at(d,'12:00').getDay());return !we||DB.planning[a.id+'|'+d]==='G'})));
+const r2=programmer(as,addDays(T,-3),T,[0,1,2,3,4,5,6],'N');ok('série : jours passés et pointés ignorés',r2.skip>=as.length*3);
+return out.join('\\n')}`,ctx);console.log(ctx.T());
