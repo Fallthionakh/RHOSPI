@@ -11,9 +11,16 @@ const c=Object.assign({},a,{matrimoniale:'Célibataire',enfants:0});const L1=pai
 const k=Object.assign({},a,{cadre:'oui'});const L2=paieLegale(k,1000000,600000);ok('cadre 1 000 000 : IPRES '+L2.ret.ipres.map(g=>g[1]).join('+'),L2.ret.ipres[0][1]===24192&&L2.ret.ipres[1][1]===13632);ok('IPM plafonnée '+L2.ret.ipm[0][1],L2.ret.ipm[0][1]===7500);
 const f=Object.assign({},a,{statut:'Fonctionnaire'});const L3=paieLegale(f,400000,250000);ok('fonctionnaire : FNR sur base, pas d IPM '+L3.ret.ipres.map(g=>g[1]).join('+'),L3.reg==='FNR'&&L3.ret.ipres[0][1]===30000&&!L3.ret.ipm.length);
 ok('rubriques légales',['ipres','ipm','impot','trimf'].every(id=>DB.rubriques.find(r=>r.id===id).mode==='legal')&&DB.rubriques.find(r=>r.id==='css').actif===false);
-const ag=DB.agents.find(x=>enPoste(x,T)&&bulletin(x,ym).brut);const b=bulletin(ag,ym);ok('bulletin réel : '+b.ret.map(g=>g[0]+'='+g[1]).join(' | '),b.ret.some(g=>g[2]==='impot')&&b.legal);
+const ag=DB.agents.find(x=>!estFonctionnaire(x)&&enPoste(x,T)&&bulletin(x,ym).brut);const b=bulletin(ag,ym);ok('bulletin réel : '+b.ret.map(g=>g[0]+'='+g[1]).join(' | '),b.ret.some(g=>g[2]==='impot')&&b.legal);
 S.rem.agentId=ag.id;S.rem.tab='bul';const h=PAGES.remun();ok('fiche : détail du calcul',h.includes('Détail du calcul légal')&&!h.includes('undefined')&&!h.includes('NaN'));
 const p=PAGES.params();ok('paramètres : nouvelle carte',p.includes('législation sénégalaise')&&!p.includes('IPM (montant fixe')&&!p.includes('NaN'));
 S.rem.tab='rub';const r=PAGES.remun();ok('rubriques : calcul légal',r.includes('calcul légal'));
 ok('formulaire agent', EDIT.agent.f(ag).some(z=>z[0]==='parts'));
+const fo=DB.agents.find(x=>estFonctionnaire(x)&&enPoste(x,T)),bf=bulletin(fo,ym);ok('fonctionnaire : pas de salaire de base ni de retenue ('+bf.gains.map(g=>g[0]+'='+g[1]).join(' | ')+' / ret '+bf.retenues+')',bf.gains.every(g=>g[2]!=='base'||g[1]===0)&&bf.retenues===0);
+S.rem.agentId=fo.id;S.rem.tab='bul';const hf=PAGES.remun();ok('fiche fonctionnaire',hf.includes('solde de l')&&!hf.includes('NaN')&&!hf.includes('undefined'));
+const cdd=DB.agents.filter(x=>enPoste(x,T)&&x.typeContrat==='CDD'&&!estFonctionnaire(x));DB.rubRegles.push({id:'t1',t:'2026-01-01',nom:'test',cats:[],contrats:['CDD'],statuts:[],rubs:{risque:{on:true,v:77000},transp:{on:false}}});
+ok('règle CDD ('+cdd.length+' agents) : prime de risque 77 000, transport retiré',cdd.length&&cdd.every(x=>{const b=bulletin(x,ym);return b.gains.some(g=>g[2]==='risque'&&g[1]===77000)&&!b.gains.some(g=>g[2]==='transp')}));
+const autre=DB.agents.find(x=>enPoste(x,T)&&x.typeContrat!=='CDD'&&!estFonctionnaire(x));ok('autres contrats inchangés',bulletin(autre,ym).gains.some(g=>g[2]==='transp'));
+const x0=cdd[0];x0.rubOn={transp:true};ok('choix de l agent prioritaire',bulletin(x0,ym).gains.some(g=>g[2]==='transp'));
+S.rem.tab='rub';S.rem.raAg=x0.id;const rp=PAGES.remun();ok('écran attribution',rp.includes('en masse')&&rp.includes('Rubriques d')&&!rp.includes('NaN')&&!rp.includes('undefined'));
 return out.join('\\n')}`,ctx);console.log(ctx.T());

@@ -1,0 +1,20 @@
+from playwright.sync_api import sync_playwright
+import pathlib
+html=pathlib.Path('/home/claude/pointview/index.html').resolve().as_uri()
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path='/usr/bin/google-chrome');pg=b.new_page(viewport={'width':1366,'height':900})
+    errs=[];pg.on('pageerror',lambda e:errs.append(str(e)))
+    pg.clock.install(time="2026-11-24T17:00:00");pg.goto(html);pg.wait_for_timeout(800)
+    pg.evaluate("S.popPaieVu=true;closeModal();S.profil=profils().find(x=>x.role==='superadmin');S.page='remun';S.rem.tab='rub';render()")
+    pg.wait_for_timeout(300)
+    pg.locator('.ra_ct[value="CDD"]').check();pg.wait_for_timeout(200)
+    print(pg.inner_text('#ra_n'))
+    pg.select_option('#ra_r_risque','on');pg.fill('#ra_v_risque','50000');pg.fill('#ra_nom','Essai');pg.click('[data-act=raAppliquer]');pg.wait_for_timeout(300)
+    print('règles:',pg.evaluate("DB.rubRegles.map(g=>g.nom+':'+raAgents(g).length).join(', ')"))
+    c=pg.locator('h2:has-text("en masse")').locator('..');c.screenshot(path='/tmp/ra1.png')
+    pg.fill('#ra_ag','Diop');pg.wait_for_timeout(100)
+    pg.evaluate("S.rem.raAg=DB.agents.find(a=>estFonctionnaire(a)&&enPoste(a,today())).id;render()");pg.wait_for_timeout(300)
+    pg.locator('h2:has-text("Rubriques d\'un agent")').locator('..').screenshot(path='/tmp/ra2.png')
+    pg.set_viewport_size({'width':390,'height':844});pg.wait_for_timeout(300);pg.locator('h2:has-text("en masse")').locator('..').screenshot(path='/tmp/ra3.png')
+    print('erreurs:',errs)
+    b.close()
