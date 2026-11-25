@@ -23,7 +23,7 @@ function svBul(A,B){const tot=o=>{if(!o||!o.lignes)return null;const g=o.lignes.
  if(A&&B&&A.statut!==B.statut)d.unshift(`État : ${A.statut} → ${B.statut}`);
  const t=tb?`Brut ${num(tb.g)}, retenues ${num(tb.r)}, net ${num(tb.n)}`:ta?`(avant : brut ${num(ta.g)}, net ${num(ta.n)})`:'';return(A&&B?d.slice(0,10).join(' ; ')+(d.length?' — ':''):'')+t}
 function svTrace(){try{if(!SV||SV_DB!==DB)return svBase();const now=svRows(),ch=[];
- for(const[k,j]of now)if(SV.get(k)!==j)ch.push([k,SV.get(k),j]);for(const[k,j]of SV)if(!now.has(k))ch.push([k,j,undefined]);SV=now;if(!ch.length)return;
+ for(const[k,j]of now)if(SV.get(k)!==j)ch.push([k,SV.get(k),j]);for(const[k,j]of SV)if(!now.has(k))ch.push([k,j,undefined]);SV=now;if(!ch.length)return;svNotif(ch);
  DB.suivi=DB.suivi||[];const t=new Date().toISOString(),par=who(),add=e=>DB.suivi.unshift({id:uid(),t,par,...e});
  if(ch.length>150){const n={};ch.forEach(([k])=>{const c=k.slice(2,k.indexOf(CL_SEP));n[c]=(n[c]||0)+1});add({mod:'Plusieurs modules',action:'Modification en masse',cible:`${ch.length} enregistrements`,det:Object.entries(n).map(([c,v])=>`${SV_MOD[c]||c} : ${v}`).join(' ; ')})}
  else ch.forEach(([k,o,n])=>{const ty=k[0],c=k.slice(2,k.indexOf(CL_SEP)),id=k.slice(k.indexOf(CL_SEP)+1),A=o===undefined?undefined:JSON.parse(o),B=n===undefined?undefined:JSON.parse(n),x=B||A;
