@@ -3125,6 +3125,15 @@ if(typeof document!=='undefined'){const st=document.createElement('style');st.te
 .msg .pt{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:none;background:transparent}.msg.nonlu{background:#f3f8ff}.msg.nonlu .pt{background:var(--bleu,#2563eb)}.msg:not(.nonlu) b{font-weight:500}
 @media(max-width:520px){.tuiles{grid-template-columns:1fr 1fr}.tuile{font-size:13.5px;padding:12px}}`;document.head&&document.head.appendChild(st)}
 
+/* ============ Œil « afficher / masquer le mot de passe » sur tous les champs mot de passe ============ */
+const OEIL_O='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+ OEIL_F='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.8 10.8 0 0112 5c6.4 0 10 7 10 7a17 17 0 01-3.2 4.2M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 005.4-1.6M9.9 9.9a3 3 0 004.2 4.2"/></svg>';
+function oeilMdp(){document.querySelectorAll('input[type=password]:not([data-oeil])').forEach(i=>{i.dataset.oeil=1;const w=document.createElement('span');w.className='mdp-w';i.parentNode.insertBefore(w,i);w.appendChild(i);
+ const b=document.createElement('button');b.type='button';b.className='mdp-oeil';b.innerHTML=OEIL_O;b.title='Afficher le mot de passe';b.setAttribute('aria-label','Afficher le mot de passe');b.setAttribute('aria-pressed','false');
+ b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const v=i.type==='password';i.type=v?'text':'password';b.innerHTML=v?OEIL_F:OEIL_O;const l=v?'Masquer le mot de passe':'Afficher le mot de passe';b.title=l;b.setAttribute('aria-label',l);b.setAttribute('aria-pressed',String(v));i.focus()});w.appendChild(b)})}
+if(typeof document!=='undefined'&&typeof MutationObserver!=='undefined'){let t=null;new MutationObserver(()=>{clearTimeout(t);t=setTimeout(oeilMdp,30)}).observe(document.documentElement,{childList:true,subtree:true});
+ const st=document.createElement('style');st.textContent='.mdp-w{position:relative;display:block;width:100%}.mdp-w input{width:100%;padding-right:46px!important;box-sizing:border-box}.mdp-oeil{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:0;border-radius:8px;background:transparent;color:#5b6b80;cursor:pointer;padding:0}.mdp-oeil:hover{background:rgba(37,99,235,.08);color:var(--bleu,#2563eb)}.mdp-oeil:focus-visible{outline:2px solid var(--bleu,#2563eb);outline-offset:1px}';document.head&&document.head.appendChild(st)}
+
 function init(){
  load();S.profil=profils()[0];
  document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&ACT[b.dataset.act])ACT[b.dataset.act](b.dataset,b,e)});
