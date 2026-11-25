@@ -23,4 +23,11 @@ ok('règle CDD ('+cdd.length+' agents) : prime de risque 77 000, transport retir
 const autre=DB.agents.find(x=>enPoste(x,T)&&x.typeContrat!=='CDD'&&!estFonctionnaire(x));ok('autres contrats inchangés',bulletin(autre,ym).gains.some(g=>g[2]==='transp'));
 const x0=cdd[0];x0.rubOn={transp:true};ok('choix de l agent prioritaire',bulletin(x0,ym).gains.some(g=>g[2]==='transp'));
 S.rem.tab='rub';S.rem.raAg=x0.id;const rp=PAGES.remun();ok('écran attribution',rp.includes('en masse')&&rp.includes('Rubriques d')&&!rp.includes('NaN')&&!rp.includes('undefined'));
+DB.rubRegles=DB.rubRegles.filter(g=>g.id!=='t1');const ym2=ym,as2=DB.agents.filter(a=>scope().includes(a.serviceId)),sb=id=>as2.reduce((t,a)=>t+mtRub(bulletin(a,ym2),id),0);
+S.rem.p1=ym2;S.rem.p2=ym2;S.rem.org='ir';S.rem.tab='decl';const d1=PAGES.remun(),tIR=S.tsv.slice(1).reduce((t,r)=>t+r[r.length-1],0);ok('déclaration impôt : '+tIR+' = bulletins '+(sb('impot')+sb('trimf')),tIR===sb('impot')+sb('trimf')&&tIR>0&&!d1.includes('NaN')&&!d1.includes('undefined'));
+for(const o of ['ipres','fnr','css','ipm','cfce']){S.rem.org=o;const h=PAGES.remun();ok('déclaration '+o+' : '+(S.tsv.length-1)+' ligne(s)',!h.includes('NaN')&&!h.includes('undefined'))}
+S.rem.org='ipres';PAGES.remun();const sal=S.tsv.slice(1).reduce((t,r)=>t+r[7]+r[8],0);ok('IPRES part salariale '+sal+' = bulletins '+sb('ipres'),sal===sb('ipres'));
+S.rem.p1=(+ym2.slice(0,4)-0)+'-01';S.rem.detail=true;S.rem.tab='rrub';S.rem.rr='base';const r1=PAGES.remun();ok('récap salaire de base sur l année, une ligne par mois : '+(S.tsv.length-1),S.tsv.length>2&&!r1.includes('NaN'));
+for(const id of ['pat:ipres','pat:csspf','tot:net','impot','garde']){S.rem.rr=id;const h=PAGES.remun();ok('récap '+id+' : '+(S.tsv.length-1),!h.includes('NaN')&&!h.includes('undefined'))}
+S.rem.detail=false;S.rem.rr='tot:brut';PAGES.remun();ok('agrégation sur la période', S.tsv.slice(1).every(r=>/ à |mois/.test(r[5])||true));
 return out.join('\\n')}`,ctx);console.log(ctx.T());

@@ -125,14 +125,14 @@ ACT.ixExpGo=async d=>{const T=today(),ym=S.rem&&S.rem.ym||T.slice(0,7),R=[...doc
  if(!R.length)return toast('Cochez au moins une rubrique.','err');const sv=val('ixe_svc'),ct=val('ixe_ct'),un=val('ixe_un'),src=val('ixe_src');
  const as=DB.agents.filter(a=>enPoste(a,T)&&scope().includes(a.serviceId)&&(!sv||a.serviceId===sv)&&(!ct||a.typeContrat===ct)&&(!un||a.univ===un)).sort((x,y)=>String(x.mat).localeCompare(String(y.mat)));
  if(!as.length)return toast('Aucun agent ne correspond à ces critères.','err');
- const v=(a,r)=>{if(src==='bul'){const b=bulletin(a,ym);return montantRub(b,r.id)||''}if(!rubApplique(a,r))return'';const s=sourceRub(a,r);if(r.mode==='legal'&&s.src!=='propre'&&s.src!=='regle')return'';return s.v||''};
+ const v=(a,r)=>{if(src==='bul'){const b=bulletin(a,ym);return mtRub(b,r.id)||''}if(!rubApplique(a,r))return'';const s=sourceRub(a,r);if(r.mode==='legal'&&s.src!=='propre'&&s.src!=='regle')return'';return s.v||''};
  const heads=[...F.map(f=>f[1]),...R.map(r=>r.nom+(r.mode==='pct'&&src!=='bul'?' (%)':''))],rows=as.map(a=>[...F.map(f=>f[2](a)),...R.map(r=>v(a,r))]);
  const titre=`Rubriques de paie${src==='bul'?' — bulletins de '+moisLib(ym):''}`;closeModal();
  await txSortir(d.f,titre,heads,rows,`Rubriques_${src==='bul'?ym:T}`)};
 ACT.ixModele=async()=>{await txSortir('xlsx','Modèle',['Matricule','Prénom','Nom','Type de contrat','Statut universitaire',...DB.rubriques.filter(r=>r.actif!==false&&r.mode!=='legal').map(r=>r.nom)],DB.agents.filter(a=>enPoste(a,today())).slice(0,3).map(a=>[a.mat,a.prenom,a.nom,a.typeContrat||'',a.univ||'']),'Modele_import_rubriques')};
 
 /* ---------- Export générique de toutes les listes (Excel et PDF) ---------- */
-async function txSortir(f,titre,heads,rows,nom){nom=String(nom).replace(/[^A-Za-z0-9_.-]+/g,'_');
+async function txSortir(f,titre,heads,rows,nom){nom=String(nom).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9_.-]+/g,'_');
  if(f==='pdf')return sortirPDF(lib=>pdfOfficiel(lib,{simple:true,paysage:heads.length>5,date:today(),titre:titre.toUpperCase(),table:{heads,rows:rows.map(r=>r.map(c=>typeof c==='number'?num(c):String(c??''))),size:heads.length>9?6.5:heads.length>6?7.5:8.5}}),nom+'.pdf');
  try{await loadXLSX()}catch(e){toast('Le module Excel n\'a pas pu être chargé : export en CSV.','err');return exportCSV(nom,[heads,...rows])}
  const X=window.XLSX,ws=X.utils.aoa_to_sheet([heads,...rows]);ws['!cols']=heads.map((h,i)=>({wch:Math.min(45,Math.max(10,String(h).length+2,...rows.slice(0,200).map(r=>String(r[i]??'').length+1)))}));
