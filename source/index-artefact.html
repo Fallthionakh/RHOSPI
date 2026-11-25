@@ -3184,6 +3184,27 @@ if(typeof document!=='undefined'){const st=document.createElement('style');st.te
 .bmm.on{border-color:var(--bleu);background:var(--bleu);color:#fff}.bmm.on span{color:#dbe7ff}.bmm.vide span{color:#a3adbb}.bmm:disabled{opacity:.45;cursor:default}
 @media(max-width:1000px){.bmg{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(max-width:520px){.bmg{grid-template-columns:repeat(4,minmax(0,1fr))}}`;document.head&&document.head.appendChild(st)}
 
+/* ============ Mes pointages : agenda de fonctionnement du service (horaires, gardes, permanences) ============ */
+const AG_SPEC=v=>v&&(/garde|perman|astreinte/i.test(v.nom||'')||['G','P','A'].includes(v.code));
+function mpAgenda(a,M){if(M.mode)return'';const sid=a.serviceId,S0=svc(sid),[y,m]=M.ym.split('-').map(Number),n=new Date(y,m,0).getDate(),dec=(new Date(y,m-1,1).getDay()+6)%7,T=today();
+ const vs=vacsFor(sid).filter(v=>v&&v.code!=='R'),dj=d=>`${M.ym}-${String(d).padStart(2,'0')}`,court=x=>x?`${(x.prenom||'').trim().charAt(0)}. ${x.nom}`:'un collègue';
+ const memes=DB.agents.filter(x=>x.serviceId===sid),ids=new Set(memes.map(x=>x.id));
+ const jour=k=>{const out=[];memes.forEach(x=>{const v=vacOf(x.id,k);if(AG_SPEC(v))out.push({x,v})});return out};
+ const grille=[...Array(n)].map((_,i)=>{const k=dj(i+1);return{k,l:jour(k)}}),nb=grille.reduce((t,g)=>t+g.l.length,0),moi=grille.reduce((t,g)=>t+g.l.filter(z=>z.x.id===a.id).length,0);
+ const hor=v=>v.debut&&v.fin?`${v.debut} – ${v.fin}${v.fin<=v.debut?' (lendemain)':''}`:'—';
+ const cell=g=>{const d=+g.k.slice(8);return`<div class="agc${g.k===T?' auj':''}${g.k<T?' pas':''}"><b>${d}</b>${g.l.map(({x,v})=>`<span class="agi v${vk(v.code)}${x.id===a.id?' moi':''}" title="${esc(v.nom+' '+hor(v)+' — '+(x.id===a.id?'vous':nomA(x)))}"><i>${esc(v.code)}</i>${x.id===a.id?'<b>Vous</b>':esc(court(x))}</span>`).join('')}</div>`};
+ return`<div class="card"><div class="head" style="margin-bottom:6px"><h2>Agenda du service : ${esc(S0.nom)}</h2><span class="sp"></span><span class="sub">${moisLib(M.ym)}</span></div>
+ <h3 style="margin:4px 0 8px">Horaires de fonctionnement</h3><div class="agv">${vs.map(v=>`<div class="agvi"><span class="vc v${vk(v.code)}">${esc(v.code)}</span><div><b>${esc(v.nom)}</b><div class="sub">${hor(v)}${v.travail===false?' · astreinte (hors présence)':''}${v.pause?` · pause ${v.pause} min`:''}</div></div></div>`).join('')||'<div class="sub">Aucun horaire configuré pour ce service.</div>'}</div>
+ <h3 style="margin:16px 0 8px">Gardes et permanences du mois</h3>
+ ${nb?`<div class="sub" style="margin-bottom:8px">${nb} garde(s) ou permanence(s) programmée(s) dans le service ce mois-ci${moi?`, dont <b>${moi} pour vous</b>`:''}.${ids.size<=1?' Seules vos propres gardes vous sont visibles.':''}</div>
+ <div class="agcal">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(j=>`<div class="mph">${j}</div>`).join('')}${'<div></div>'.repeat(dec)}${grille.map(cell).join('')}</div><div class="agl">${grille.filter(g=>g.l.length).map(g=>`<div class="agli${g.k<T?' pas':''}"><b>${fdate(g.k)}</b>${g.l.map(({x,v})=>`<span class="agi v${vk(v.code)}${x.id===a.id?' moi':''}"><i>${esc(v.code)}</i>${esc(v.nom)} ${hor(v)} — ${x.id===a.id?'<b>vous</b>':esc(nomA(x))}</span>`).join('')}</div>`).join('')}</div>`:`<div class="empty">Aucune garde ni permanence n'est programmée pour ce service en ${moisLib(M.ym)}.${vs.some(AG_SPEC)?'':' Le service n\'a pas d\'horaire de garde ou de permanence configuré.'}</div>`}</div>`}
+const mesptAG=PAGES.mespt;
+PAGES.mespt=()=>{const h=mesptAG(),a=ag(S.profil.agentId);if(!a)return h;const M=S.mp||{ym:today().slice(0,7)},i=h.indexOf('<div class="card"><div class="head" style="margin-bottom:10px"><h2>Détail de mes jours');return i<0?h+mpAgenda(a,M):h.slice(0,i)+mpAgenda(a,M)+h.slice(i)};
+if(typeof document!=='undefined'){const st=document.createElement('style');st.textContent=`.agv{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.agvi{display:flex;gap:10px;align-items:center;border:1px solid var(--bord);border-radius:12px;padding:8px 10px}
+.agcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.agc{border:1px solid #e6ebf2;border-radius:10px;min-height:74px;padding:5px;display:flex;flex-direction:column;gap:3px;background:#fff;min-width:0}.agc>b{font-size:13px}.agc.pas{background:#fafbfd}.agc.auj{border-color:var(--bleu);box-shadow:inset 0 0 0 1px var(--bleu)}
+.agi{display:flex;gap:4px;align-items:center;font-size:11.5px;border-radius:6px;padding:1px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agi i{font-style:normal;font-weight:800}.agi.moi{outline:2px solid #16a34a;outline-offset:-1px}
+.agl{display:none}@media(max-width:700px){.agc{min-height:44px;padding:3px}.agc .agi{font-size:0;padding:0;height:6px;border-radius:3px}.agc .agi.moi{outline-width:1px}.agl{display:flex;flex-direction:column;gap:6px;margin-top:12px}.agli{display:flex;flex-direction:column;gap:4px;border:1px solid var(--bord);border-radius:10px;padding:8px 10px}.agli.pas{opacity:.6}.agli .agi{font-size:12.5px;white-space:normal}}`;document.head&&document.head.appendChild(st)}
+
 function init(){
  load();S.profil=profils()[0];
  document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&ACT[b.dataset.act])ACT[b.dataset.act](b.dataset,b,e)});
