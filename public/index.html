@@ -3222,6 +3222,13 @@ migrate=function(db){migrateAG(db);try{if(!(typeof CL!=='undefined'&&CL)&&!db.de
    if(wd===2&&Math.floor(i/7)%2===0)db.planning[ms.id+'|'+k]='G'}}}}catch(e){}return db};
 
 ACT.agPasses=()=>{S.agPasses=!S.agPasses;render()};
+/* ============ Mise à jour : prévenir quand une nouvelle version est en ligne ============ */
+const RH_VERSION='20261125150153';
+(function(){if(typeof window==='undefined'||!/^https?:/.test(location.protocol)||RH_VERSION.startsWith('__'))return;let vu=false;
+ const verif=()=>fetch('version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(v=>{v=(v||'').trim();if(v&&v!==RH_VERSION&&!vu){vu=true;const b=document.createElement('div');b.className='majbar';b.innerHTML='<span>Une nouvelle version de SENHOP RH est disponible.</span><button class="btn s" type="button">Mettre à jour</button>';b.querySelector('button').onclick=()=>location.reload();document.body.appendChild(b)}}).catch(()=>{});
+ setTimeout(verif,4000);setInterval(verif,180000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)verif()});
+ const st=document.createElement('style');st.textContent='.majbar{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:70;display:flex;gap:12px;align-items:center;background:#1e3a8a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;box-shadow:0 12px 30px -10px rgba(15,23,42,.5);font-weight:600;max-width:94vw;flex-wrap:wrap}.majbar .btn{background:#22c55e}';document.head.appendChild(st)})();
+
 function init(){
  load();S.profil=profils()[0];
  document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&ACT[b.dataset.act])ACT[b.dataset.act](b.dataset,b,e)});

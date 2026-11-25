@@ -6,3 +6,5 @@
   Cache-Control: no-cache
 /
   Cache-Control: no-cache
+/version.txt
+  Cache-Control: no-store
