@@ -30,4 +30,11 @@ S.rem.org='ipres';PAGES.remun();const sal=S.tsv.slice(1).reduce((t,r)=>t+r[7]+r[
 S.rem.p1=(+ym2.slice(0,4)-0)+'-01';S.rem.detail=true;S.rem.tab='rrub';S.rem.rr='base';const r1=PAGES.remun();ok('récap salaire de base sur l année, une ligne par mois : '+(S.tsv.length-1),S.tsv.length>2&&!r1.includes('NaN'));
 for(const id of ['pat:ipres','pat:csspf','tot:net','impot','garde']){S.rem.rr=id;const h=PAGES.remun();ok('récap '+id+' : '+(S.tsv.length-1),!h.includes('NaN')&&!h.includes('undefined'))}
 S.rem.detail=false;S.rem.rr='tot:brut';PAGES.remun();ok('agrégation sur la période', S.tsv.slice(1).every(r=>/ à |mois/.test(r[5])||true));
+save();const n0=(DB.suivi||[]).length;const ax=DB.agents.find(x=>!estFonctionnaire(x)&&enPoste(x,T)&&bulletin(x,ym).brut);const tel0=ax.tel;ax.tel='770000000';save();const e1=DB.suivi[0];ok('suivi : modification agent → '+e1.mod+' / '+e1.action+' / '+e1.cible+' / '+e1.det,e1.mod==='Agents'&&e1.action==='Modification'&&e1.det.includes('770000000'));
+const ir0=mtRub(bulletin(ax,ym),'impot');const rq1=setMontant(ax,ym,'impot',12345,'le récap par rubrique');const b1=bulletin(ax,ym);ok('modification d une retenue : impôt '+ir0+' → '+mtRub(b1,'impot')+' ('+b1.statut+')',rq1.ok&&mtRub(b1,'impot')===12345&&b1.statut==='modifié');
+const ip0=mtRub(b1,'ipres');setMontant(ax,ym,'base',montantRub(b1,'base')+100000,'le bulletin');const b2=bulletin(ax,ym);ok('hausse du salaire : IPRES recalculée '+ip0+' → '+mtRub(b2,'ipres')+', impôt saisi conservé '+mtRub(b2,'impot'),mtRub(b2,'ipres')!==ip0&&mtRub(b2,'impot')===12345);
+ok('suivi : bulletins et journal de paie tracés',DB.suivi.some(x=>x.mod==='Bulletins de paie')&&DB.journalPaie.some(j=>/récap par rubrique/.test(j.detail)));
+S.rem.tab='jour';const sj=PAGES.remun();ok('page suivi des modifications',sj.includes('Suivi des modifications')&&sj.includes('770000000')&&!sj.includes('undefined'));S.sv={n:300,mod:'Agents'};const sj2=PAGES.remun();ok('filtre module',!sj2.includes('Bulletins de paie</td>'));
+S.rem.tab='rrub';S.rem.rr='impot';S.rem.p1=ym;S.rem.p2=ym;S.rem.rr0=true;const rr=PAGES.remun();ok('récap modifiable',rr.includes('data-chg="rrEdit"'));
+S.rem.tab='recap';const jr=PAGES.remun();ok('journal de paie renommé',jr.includes('Journal de paie de'));
 return out.join('\\n')}`,ctx);console.log(ctx.T());

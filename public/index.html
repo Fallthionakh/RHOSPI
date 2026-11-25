@@ -1534,12 +1534,12 @@ function bulletinsPDF(as,ym,lib){const doc=new lib.jsPDF({unit:'mm',format:'a4'}
 /* ---------- Écrans ---------- */
 PAGES.remun=()=>{const me=S.profil.role==='agent',R=S.rem,T=today(),e=can('paieEdit');if(me){R.agentId=S.profil.agentId;R.tab='bul'}if(!can('paie')&&!me)return'<div class="empty">Accès réservé à la direction, au SAF et aux ressources humaines.</div>';
  const as=DB.agents.filter(a=>scope().includes(a.serviceId)&&enPoste(a,T)),a=ag(R.agentId),ym=R.ym,{au}=moisBornes(ym),tab=R.tab||'bul';
- const onglets=me?'':`<div class="row">${[['bul','Bulletins'],['recap','Tableau récapitulatif'],['decl','Déclarations'],['rrub','Récap par rubrique'],['rub','Rubriques et grilles'],['jour','Journal de paie']].map(([k,l])=>`<button class="btn ${tab===k?'':'g'}" data-act="remTab" data-t="${k}">${l}</button>`).join('')}</div>`;
+ const onglets=me?'':`<div class="row">${[['bul','Bulletins'],['recap','Journal de paie'],['decl','Déclarations'],['rrub','Récap par rubrique'],['rub','Rubriques et grilles'],['jour','Suivi des modifications']].map(([k,l])=>`<button class="btn ${tab===k?'':'g'}" data-act="remTab" data-t="${k}">${l}</button>`).join('')}</div>`;
  if(tab==='recap')return recapPage(onglets);
  if(tab==='decl')return declPage(onglets);
  if(tab==='rrub')return rrubPage(onglets);
  if(tab==='rub')return`<div class="head"><div><h1>Rémunérations</h1><div class="sub">Commun à tous, par catégorie, par poste, et exceptions propres aux agents</div></div></div>${onglets}${rubPage(e)}`;
- if(tab==='jour')return`<div class="head"><div><h1>Rémunérations</h1><div class="sub">Journal de paie : toutes les modifications, avec leur auteur</div></div><span class="sp"></span><button class="btn v" data-act="remCsv">Exporter Excel</button></div>${onglets}${journalPage()}`;
+ if(tab==='jour')return`<div class="head"><div><h1>Rémunérations</h1><div class="sub">Suivi des modifications : toutes les modifications portées sur l'application — qui, quoi, quand</div></div><span class="sp"></span><button class="btn v" data-act="dcXls">Exporter Excel</button></div>${onglets}${suiviPage()}`;
  const head=`<div class="head"><div><h1>${a?'Fiche de rémunération':'Rémunérations'}</h1><div class="sub">${a?`${esc(nomA(a))} · ${a.mat} · ${esc(svc(a.serviceId).nom)} · ${esc(poste(a.posteId).nom)} · `:''}${moisLib(ym)}</div></div><span class="sp"></span>${me?'':agPick('rm_ag',as,R.agentId,'data-chg="remAg" style="min-width:240px"','Tous les agents — ou recherchez')}<input type="month" id="rm_m" data-chg="remM" value="${ym}" max="${T.slice(0,7)}" aria-label="Mois"><button class="btn v" data-act="remCsv">Exporter Excel</button>${e&&!me?arretBtn(ym):''}</div>${onglets}${me?'':paieBandeau(ym)}`;
  if(!a){const rows=as.map(x=>({x,b:bulletin(x,ym)})).filter(z=>z.b.brut),tb=rows.reduce((t,z)=>t+z.b.brut,0),tn=rows.reduce((t,z)=>t+z.b.net,0),na=rows.filter(z=>z.b.statut==='archivé').length;
   S.tsv=[['Matricule','Agent','Service','Catégorie','Poste','Salaire de base','Primes et indemnités','Brut','Retenues','Net à payer','État'],...rows.map(({x,b})=>[x.mat,nomA(x),svc(x.serviceId).nom,poste(x.posteId).nom,fnom(x),b.gains[0][1],b.brut-b.gains[0][1],b.brut,b.retenues,b.net,b.statut])];S.tsvNom='Livre_de_paie_'+ym;
@@ -1565,7 +1565,7 @@ function bulModal(){const B=S.bul,a=ag(B.agentId),t=bulTot();modal(`Modifier le 
  <div id="bl_tot" class="demo" style="background:var(--bleu-pale);border-color:#c5dbf2;color:var(--encre);display:flex;gap:18px;flex-wrap:wrap;align-items:center">${bulTotHTML(t)}</div>
  <label class="field">Motif de la modification (obligatoire)<textarea id="bl_motif" rows="2" data-inp="bul" data-k="motif">${esc(B.motif)}</textarea></label>
  <label class="row" style="gap:6px"><input type="checkbox" id="bl_rec"${B.rec?' checked':''} data-chg="bulRec"> Reconduire ces montants les mois suivants pour cet agent (rubriques standard uniquement)</label>
- <div class="sub">Les retenues en pourcentage suivent le brut tant que vous ne modifiez pas leur montant. Chaque changement est inscrit au journal de paie.</div>`,`<button class="btn g" data-act="close">Annuler</button><button class="btn" data-act="bulOk">Enregistrer le bulletin</button>`)}
+ <div class="sub">Les retenues en pourcentage suivent le brut tant que vous ne modifiez pas leur montant. Chaque changement est inscrit au suivi des modifications.</div>`,`<button class="btn g" data-act="close">Annuler</button><button class="btn" data-act="bulOk">Enregistrer le bulletin</button>`)}
 
 /* ---------- Actions ---------- */
 const paramRHBase=CHG.paramRH;
@@ -1658,8 +1658,8 @@ function paieModal(ym){const ms=moisAArreter(ym),l=bulletinsMois(ym),tb=l.reduce
  modal(`Arrêter la paie de ${moisLib(ym)}`,`${ym===ymNow()&&+today().slice(8)>=15?`<p style="margin:0">Nous sommes le ${dfr(today())} : la paie de ${moisLib(ym)} peut être arrêtée.</p>`:''}
  <dl class="fiche">${[['Bulletins du mois',l.length],['À archiver',na],['Masse salariale brute',fcfa(tb)],['Total net à payer',fcfa(tn)]].map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
  ${av.length?`<div class="alert"><div><b>${av.length} mois précédent(s) encore ouvert(s)</b><div>${av.map(moisLib).join(', ')} : leurs bulletins seront archivés en même temps.</div></div></div>`:''}
- <div class="sub">L'arrêt archive les bulletins : ils ne changent plus. Les changements de rubriques, de grilles ou de fiches ne s'appliqueront qu'aux bulletins des mois suivants. Un bulletin peut encore être désarchivé individuellement, avec trace dans le journal de paie.</div>`,
- `<button class="btn g" data-act="close">Plus tard</button><button class="btn g" data-act="paieRecap" data-m="${ym}">Vérifier le tableau récapitulatif</button><button class="btn" data-act="paieArretOk" data-m="${ym}">Arrêter la paie</button>`)}
+ <div class="sub">L'arrêt archive les bulletins : ils ne changent plus. Les changements de rubriques, de grilles ou de fiches ne s'appliqueront qu'aux bulletins des mois suivants. Un bulletin peut encore être désarchivé individuellement, avec trace dans le suivi des modifications.</div>`,
+ `<button class="btn g" data-act="close">Plus tard</button><button class="btn g" data-act="paieRecap" data-m="${ym}">Vérifier le journal de paie</button><button class="btn" data-act="paieArretOk" data-m="${ym}">Arrêter la paie</button>`)}
 function popPaie(){const ym=ymNow();if(S.popPaieVu||!S.profil||!can('paieEdit')||+today().slice(8)<15||DB.paieArretee[ym]||$('#layer').innerHTML)return;S.popPaieVu=true;if(bulletinsMois(ym).length)paieModal(ym)}
 function arretBtn(ym){const n=bulletinsMois(ym).filter(z=>z.b.statut!=='archivé').length;return n?`<button class="btn" data-act="paieArret" data-m="${ym}">${DB.paieArretee[ym]?`Compléter l'arrêt (${n})`:`Arrêter la paie de ${moisLib(ym)}`}</button>`:''}
 function paieBandeau(ym){const A=DB.paieArretee[ym],j=+today().slice(8);
@@ -1689,13 +1689,13 @@ const RECAPH=['Ordre','Prénom(s) Nom','Date et lieu de naissance','Sexe','Fonct
 function recapTSV(D){return[[...RECAPH,...D.cols.map(recapLab),...(D.autres?['Autres']:[]),'Brut'],...D.rows.map(({a,b},i)=>[i+1,a.prenom+' '+a.nom,recapId(a),a.sexe||'',recapFonc(a),a.matrimoniale||'',a.enfants??'',a.classement||'',...D.cols.map(c=>montantRub(b,c.id)),...(D.autres?[autresRub(b,D.cid)]:[]),b.brut])]}
 function recapTotaux(){const D=S.recapD;if(!D)return'';const bs=D.rows.map(z=>bulletin(z.a,D.ym)),s=f=>bs.reduce((t,b)=>t+f(b),0);
  return`<td colspan="8" style="text-align:right"><b>Total · ${D.rows.length} agents</b></td>${D.cols.map(c=>`<td><b>${num(s(b=>montantRub(b,c.id)))}</b></td>`).join('')}${D.autres?`<td><b>${num(s(b=>autresRub(b,D.cid)))}</b></td>`:''}<td><b>${num(s(b=>b.brut))}</b></td><td></td>`}
-function recapPage(onglets){const D=S.recapD=recapDonnees(),T=today(),e=can('paieEdit');S.tsv=recapTSV(D);S.tsvNom='Etat_recapitulatif_paie_'+D.ym;
+function recapPage(onglets){const D=S.recapD=recapDonnees(),T=today(),e=can('paieEdit');S.tsv=recapTSV(D);S.tsvNom='Journal_de_paie_'+D.ym;
  const cell=(a,b,c)=>{const v=montantRub(b,c.id);return e&&b.statut!=='archivé'?`<input type="number" min="0" step="1" value="${v}" data-chg="recap" data-id="${a.id}" data-r="${c.id}" style="width:96px;text-align:right" aria-label="${esc(c.nom)} de ${esc(nomA(a))}">`:num(v)};
- return`<div class="head"><div><h1>Rémunérations</h1><div class="sub">Tableau récapitulatif de ${moisLib(D.ym)} · ${D.rows.length} agent(s) · une cellule modifiée met à jour le bulletin de l'agent</div></div><span class="sp"></span>${svcSelect()}<input type="month" id="rm_m" data-chg="remM" value="${D.ym}" max="${T.slice(0,7)}" aria-label="Mois"><button class="btn v" data-act="remCsv">Exporter Excel</button><button class="btn v" data-act="recapPdf">Imprimer l'état (PDF)</button>${e?arretBtn(D.ym):''}</div>${onglets}${paieBandeau(D.ym)}
+ return`<div class="head"><div><h1>Rémunérations</h1><div class="sub">Journal de paie de ${moisLib(D.ym)} · ${D.rows.length} agent(s) · une cellule modifiée met à jour le bulletin de l'agent</div></div><span class="sp"></span>${svcSelect()}<input type="month" id="rm_m" data-chg="remM" value="${D.ym}" max="${T.slice(0,7)}" aria-label="Mois"><button class="btn v" data-act="remCsv">Exporter Excel</button><button class="btn v" data-act="recapPdf">Imprimer l'état (PDF)</button>${e?arretBtn(D.ym):''}</div>${onglets}${paieBandeau(D.ym)}
  <div class="card"><div class="tw"><table style="font-size:13.5px"><thead><tr>${[...RECAPH,...D.cols.map(recapLab),...(D.autres?['Autres']:[]),'Brut','État'].map(h=>`<th style="white-space:normal">${esc(h)}</th>`).join('')}</tr></thead><tbody>
  ${D.rows.map(({a,b},i)=>`<tr><td>${i+1}</td><td><button class="btn g s" data-act="agent" data-id="${a.id}" style="text-align:left;border:0;padding:2px 4px;font-weight:600">${esc(a.prenom+' '+a.nom)}</button></td><td>${esc(recapId(a)||'—')}</td><td>${esc(a.sexe||'')}</td><td>${esc(recapFonc(a))}</td><td>${esc(a.matrimoniale||'—')}</td><td>${a.enfants??'—'}</td><td>${esc(a.classement||'—')}</td>${D.cols.map(c=>`<td>${cell(a,b,c)}</td>`).join('')}${D.autres?`<td>${num(autresRub(b,D.cid))}</td>`:''}<td><b id="rcb_${a.id}">${num(b.brut)}</b></td><td id="rce_${a.id}">${etatBul(b)}</td></tr>`).join('')}
  <tr id="rc_tot" style="background:var(--bleu-pale)">${recapTotaux()}</tr></tbody></table></div>
- <div class="sub" style="margin-top:8px">${e?'Saisissez un montant puis quittez la cellule : le bulletin de l\'agent passe à l\'état « modifié » et la modification est inscrite au journal de paie. ':''}Les lignes archivées ne sont plus modifiables. Pour un changement durable, utilisez plutôt l'onglet « Rubriques et grilles ». Le brut comprend aussi les lignes ajoutées à la main dans un bulletin.</div></div>`}
+ <div class="sub" style="margin-top:8px">${e?'Saisissez un montant puis quittez la cellule : le bulletin de l\'agent passe à l\'état « modifié » et la modification est inscrite au suivi des modifications. ':''}Les lignes archivées ne sont plus modifiables. Pour un changement durable, utilisez plutôt l'onglet « Rubriques et grilles ». Le brut comprend aussi les lignes ajoutées à la main dans un bulletin.</div></div>`}
 
 /* ---------- Rubriques et grilles ---------- */
 function rubPage(e){const dis=e?'':' disabled',u=r=>r.mode==='pct'?'%':'FCFA',gains=DB.rubriques.filter(r=>r.type==='gain'&&r.actif!==false),T=today(),G=DB.grille;
@@ -1731,7 +1731,7 @@ Object.assign(ACT,{
  paieArretOk:d=>{const ms=moisAArreter(d.m),n=arreterPaie(ms.length?ms:[d.m]);closeModal();toast(`Paie arrêtée : ${n} bulletin(s) archivé(s). Les prochains changements ne concerneront que les mois suivants.`,'ok');render()},
  paieRecap:d=>{closeModal();S.page='remun';S.rem.tab='recap';S.rem.agentId='';S.rem.ym=d.m||ymNow();render()},
  recapPdf:()=>{const D=S.recapD,t=S.tsv,n=t[0].length,fix=[9,34,32,9,30,19,10,14],rest=(265-fix.reduce((x,y)=>x+y,0))/(n-8),tot=['','TOTAL','','','','','','',...t[0].slice(8).map((_,j)=>num(t.slice(1).reduce((s,r)=>s+(+r[8+j]||0),0)))];
-  sortirPDF(l=>pdfOfficiel(l,{paysage:true,date:today(),titre:'ÉTAT RÉCAPITULATIF DE LA PAIE',sousTitre:`${moisLib(D.ym)} - ${DB.etab}`,table:{heads:t[0],widths:[...fix,...Array(n-8).fill(rest)],size:7.5,rows:[...t.slice(1).map(r=>r.map((c,j)=>j>=8?num(c):c)),tot]}}),S.tsvNom+'.pdf')},
+  sortirPDF(l=>pdfOfficiel(l,{paysage:true,date:today(),titre:'JOURNAL DE PAIE',sousTitre:`${moisLib(D.ym)} - ${DB.etab}`,table:{heads:t[0],widths:[...fix,...Array(n-8).fill(rest)],size:7.5,rows:[...t.slice(1).map(r=>r.map((c,j)=>j>=8?num(c):c)),tot]}}),S.tsvNom+'.pdf')},
  propreDel:d=>{setPropre(ag(d.id),d.r,null);save();toast('L\'agent suit de nouveau la grille pour cette rubrique.','ok');render()},
  propreAdd:()=>{const a=ag(pickId('pr_ag')),rid=val('pr_r');if(!a)return toast('Agent non trouvé. Précisez la recherche ou choisissez-le dans la liste.','err');if(!rid)return toast('Choisissez la rubrique.','err');
   setPropre(a,rid,Math.max(0,parseFloat(val('pr_v'))||0));save();toast(`Élément propre ajouté pour ${nomA(a)}.`,'ok');render()}
@@ -2189,7 +2189,7 @@ async function clPush(){if(CL.busy||!CL.pend.size||!CL.ready)return;CL.busy=true
 function clLot(rows){let n=0;const parA=new Map();
  for(const[coll,id,data,del]of rows){const key=coll+CL_SEP+id;if(CL.pend.has(key))continue;
   const j=del?null:JSON.stringify(data);if(del?!CL.last.has(key):CL.last.get(key)===j)continue;n++;
-  if(del)CL.last.delete(key);else CL.last.set(key,j);
+  if(del)CL.last.delete(key);else CL.last.set(key,j);if(SV){if(del)SV.delete(key);else if(!svIgn(coll.slice(2)))SV.set(key,j)}
   const t=coll[0],k=coll.slice(2);
   if(t==='a'){if(!parA.has(k))parA.set(k,new Map());parA.get(k).set(id,[data,del])}
   else if(t==='m'){const o=DB[k]&&typeof DB[k]==='object'&&!Array.isArray(DB[k])?DB[k]:(DB[k]={});if(del)delete o[id];else o[id]=data}
@@ -2793,7 +2793,7 @@ const DC_ORG={
 /* Agrégation : une ligne par agent (ou par agent et par mois) */
 function dcLignes(ok,cols,mois,detail,svcF){const C=new Map(),as=DB.agents.filter(a=>scope().includes(a.serviceId)&&(!svcF||a.serviceId===svcF)).sort((x,y)=>String(x.mat).localeCompare(String(y.mat))),out=[];
  as.forEach(a=>{const xs=mois.map(ym=>dcData(a,ym,C)).filter(x=>x&&ok(x));if(!xs.length)return;
-  const grp=detail?xs.map(x=>[x]):[xs];grp.forEach(g=>{const p1=g[0].ym,p2=g[g.length-1].ym;out.push({a,per:dcPer(p1,p2)+(detail||g.length===mois.length?'':` (${g.length} mois)`),v:cols.map(([,f,add])=>add===false?f(g[g.length-1]):g.reduce((t,x)=>t+(f(x)||0),0))})})});return out}
+  const grp=detail?xs.map(x=>[x]):[xs];grp.forEach(g=>{const p1=g[0].ym,p2=g[g.length-1].ym;out.push({a,ym:g.length===1?g[0].ym:null,per:dcPer(p1,p2)+(detail||g.length===mois.length?'':` (${g.length} mois)`),v:cols.map(([,f,add])=>add===false?f(g[g.length-1]):g.reduce((t,x)=>t+(f(x)||0),0))})})});return out}
 function dcTable(cols,L,vide){const tot=cols.map(([,,add],i)=>add===false?'':L.reduce((t,l)=>t+l.v[i],0));
  return table(['Matricule','Prénom et nom','Service','Période',...cols.map(c=>c[0])],[...L.map(l=>`<tr><td>${esc(l.a.mat)}</td><td><b>${esc(nomA(l.a))}</b></td><td>${esc(svc(l.a.serviceId).nom)}</td><td>${esc(l.per)}</td>${l.v.map((v,i)=>`<td style="text-align:right">${cols[i][2]===false?plFr(v):num(v)}</td>`).join('')}</tr>`),
   ...(L.length?[`<tr style="background:var(--bleu-pale)"><td></td><td><b>TOTAL</b></td><td>${L.length} ligne(s)</td><td></td>${tot.map(v=>`<td style="text-align:right"><b>${v===''?'':num(v)}</b></td>`).join('')}</tr>`]:[])],vide)}
@@ -2816,13 +2816,14 @@ const RR_PAT=[['pat:ipres','IPRES — part patronale',/^IPRES/],['pat:fnr','FNR 
 function rrDef(id){if(id==='tot:brut')return{nom:'Salaire brut',f:x=>x.brut};if(id==='tot:ret')return{nom:'Total des retenues',f:x=>x.b.retenues};if(id==='tot:net')return{nom:'Net à payer',f:x=>x.b.net};if(id==='tot:pat')return{nom:'Total des charges patronales',f:x=>x.L.tp};
  const p=RR_PAT.find(z=>z[0]===id);if(p)return{nom:p[1],f:x=>id==='pat:ipres'&&!x.ret('ipres')||id==='pat:ipm'&&!x.ret('ipm')||/^pat:css|pat:cfce/.test(id)&&!(x.reg==='IPRES'&&x.b.baseOn!==false&&x.base>0)?0:x.pat(p[2])};
  const r=DB.rubriques.find(z=>z.id===id)||DB.rubriques[0];return{nom:r.nom,type:r.type,f:x=>x.ret(r.id)}}
-function rrubPage(onglets){const R=dcInit(),id=R.rr||'base',D=rrDef(id),mois=dcMois(R.p1,R.p2),L=dcLignes(x=>D.f(x)>0,[['Montant',D.f]],mois,R.detail,R.svc),per=dcPer(R.p1,R.p2),tot=L.reduce((t,l)=>t+l.v[0],0),na=new Set(L.map(l=>l.a.id)).size;
+function rrubPage(onglets){const R=dcInit(),id=R.rr||'base',D=rrDef(id),mois=dcMois(R.p1,R.p2),ed=can('paieEdit')&&DB.rubriques.some(r=>r.id===id),L=dcLignes(x=>D.f(x)>0||ed&&R.rr0,[['Montant',D.f]],mois,R.detail,R.svc),per=dcPer(R.p1,R.p2),tot=L.reduce((t,l)=>t+l.v[0],0),na=new Set(L.map(l=>l.a.id)).size;
  const o=(v,l)=>`<option value="${v}"${v===id?' selected':''}>${esc(l)}</option>`,rubs=DB.rubriques.filter(r=>r.actif!==false||r.id===id);
  const sel=`<label class="field" style="min-width:300px">Rubrique<select data-chg="dcP" data-k="rr"><optgroup label="Gains">${rubs.filter(r=>r.type==='gain').map(r=>o(r.id,r.nom)).join('')}</optgroup><optgroup label="Retenues à la source">${rubs.filter(r=>r.type==='retenue').map(r=>o(r.id,r.nom)).join('')}</optgroup><optgroup label="Charges patronales">${RR_PAT.map(p=>o(p[0],p[1])).join('')}${o('tot:pat','Total des charges patronales')}</optgroup><optgroup label="Totaux">${o('tot:brut','Salaire brut')}${o('tot:ret','Total des retenues')}${o('tot:net','Net à payer')}</optgroup></select></label>`;
  S.tsv=[['Matricule','Prénom et nom','Service','Catégorie','Type de contrat','Période',D.nom],...L.map(l=>[l.a.mat,nomA(l.a),svc(l.a.serviceId).nom,(poste(l.a.posteId)||{}).nom||'',l.a.typeContrat||'',l.per,l.v[0]])];S.tsvNom=`Recap_${D.nom.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_')}_${R.p1}${R.p2!==R.p1?'_'+R.p2:''}`;
  return`<div class="head"><div><h1>Rémunérations</h1><div class="sub">Récapitulatif d'une rubrique : agents, matricules, période et montants</div></div><span class="sp"></span><button class="btn v" data-act="dcPdf" data-r="1">Récapitulatif PDF</button><button class="btn v" data-act="dcXls">Exporter Excel</button></div>${onglets}
  <div class="card">${dcFiltres(R,sel)}<div class="grid kpis">${[[na,'Agents concernés'],[per,'Période'],[fcfa(tot),'Total '+D.nom.toLowerCase()],[na?fcfa(tot/na):'—','Moyenne par agent']].map(([v,l],i)=>`<div class="kpi" style="cursor:default"><b style="font-size:${i===1?16:22}px">${v}</b><span>${esc(l)}</span></div>`).join('')}</div></div>
- <div class="card"><h2>Récapitulatif — ${esc(D.nom)} — ${esc(per)}</h2>${table(['Matricule','Prénom et nom','Service','Catégorie','Type de contrat','Période','Montant (FCFA)'],[...L.map(l=>`<tr><td>${esc(l.a.mat)}</td><td><b>${esc(nomA(l.a))}</b></td><td>${esc(svc(l.a.serviceId).nom)}</td><td>${esc((poste(l.a.posteId)||{}).nom||'')}</td><td>${esc(l.a.typeContrat||'—')}</td><td>${esc(l.per)}</td><td style="text-align:right"><b>${num(l.v[0])}</b></td></tr>`),...(L.length?[`<tr style="background:var(--bleu-pale)"><td></td><td><b>TOTAL</b></td><td>${na} agent(s)</td><td></td><td></td><td></td><td style="text-align:right"><b>${num(tot)}</b></td></tr>`]:[])],'Aucun montant pour cette rubrique sur la période.')}</div>`}
+ <div class="card"><h2>Récapitulatif — ${esc(D.nom)} — ${esc(per)}</h2>${table(['Matricule','Prénom et nom','Service','Catégorie','Type de contrat','Période','Montant (FCFA)'],[...L.map(l=>`<tr><td>${esc(l.a.mat)}</td><td><b>${esc(nomA(l.a))}</b></td><td>${esc(svc(l.a.serviceId).nom)}</td><td>${esc((poste(l.a.posteId)||{}).nom||'')}</td><td>${esc(l.a.typeContrat||'—')}</td><td>${esc(l.per)}</td><td style="text-align:right">${ed&&l.ym&&bulletin(l.a,l.ym).statut!=='archivé'?`<input type="number" min="0" step="1" value="${l.v[0]}" data-chg="rrEdit" data-id="${l.a.id}" data-ym="${l.ym}" data-r="${id}" style="width:120px;text-align:right" aria-label="Montant de ${esc(nomA(l.a))}">`:`<b>${num(l.v[0])}</b>`}</td></tr>`),...(L.length?[`<tr style="background:var(--bleu-pale)"><td></td><td><b>TOTAL</b></td><td>${na} agent(s)</td><td></td><td></td><td></td><td style="text-align:right"><b>${num(tot)}</b></td></tr>`]:[])],'Aucun montant pour cette rubrique sur la période.')}
+ <div class="row" style="margin-top:8px;gap:12px">${ed?`<label class="row" style="gap:6px"><input type="checkbox" data-chg="rr0"${R.rr0?' checked':''}> Afficher aussi les agents sans montant (pour en saisir un)</label>`:''}<span class="sub">${ed?(R.p1===R.p2||R.detail?'Saisissez un montant puis quittez la cellule : le bulletin de l\'agent passe à « modifié » et la modification est inscrite au suivi des modifications. Les bulletins archivés ne sont pas modifiables.':'Pour modifier les montants, choisissez un seul mois ou cochez « Une ligne par mois ».'):''}</span></div></div>`}
 Object.assign(CHG,{dcP:el=>{const R=S.rem,k=el.dataset.k;R[k]=el.type==='checkbox'?el.checked:el.value;if(k==='p1'&&R.p1>R.p2)R.p2=R.p1;if(k==='p2'&&R.p1>R.p2)R.p1=R.p2;render()}});
 Object.assign(ACT,{
  dcXls:()=>{const[h,...rows]=S.tsv||[];if(!rows.length)return toast('Rien à exporter sur cette période.','err');txSortir('xlsx',S.tsvNom.split('_').slice(0,2).join(' '),h,rows,S.tsvNom)},
@@ -2832,6 +2833,79 @@ Object.assign(ACT,{
   const tot=h.map((c,i)=>i<2||/Parts/.test(c)||!rows.every(r=>typeof r[i]==='number')?'':rows.reduce((t,r)=>t+r[i],0));const titre=d.r?`Récapitulatif — ${rrDef(R.rr||'base').nom}`:`Déclaration ${DC_ORG[R.org||'ir'].nom}`;
   sortirPDF(lib=>pdfOfficiel(lib,{simple:true,paysage:h.length>6,date:today(),titre:titre.toUpperCase(),sousTitre:`Période : ${dcPer(R.p1,R.p2)}${R.svc?' · Service : '+svc(R.svc).nom:''}${d.r?'':' · '+DC_ORG[R.org||'ir'].dest}`,
    table:{heads:h,rows:[...rows.map(r=>r.map((c,i)=>typeof c==='number'?(/Parts/.test(h[i])?plFr(c):num(c)):String(c??''))),h.map((c,i)=>i===1?'TOTAL':i===2?`${rows.length} ligne(s)`:tot[i]===''?'':num(tot[i]))],size:h.length>9?6.5:h.length>6?7.5:8.5}}),S.tsvNom+'.pdf')}});
+
+/* ============ Suivi des modifications (toute l'application) et modification des montants depuis le récap ============ */
+const SV_MOD={agents:'Agents',affectations:'Mouvements',pointages:'Pointage',absences:'Congés et absences',decisions:'Décisions',demandes:'Demandes',services:'Services',postes:'Catégories',fonctions:'Postes',
+ rubriques:'Rubriques de paie',rubRegles:'Règles de paie',formations:'Formation',sante:'Santé au travail',pec:'Prises en charge',documents:'Documents',droits:'Droits d\'accès',vacations:'Vacations',bareme:'Barème des gardes',
+ planning:'Planning',bulletins:'Bulletins de paie',paieArretee:'Arrêt de la paie',paramsSvc:'Paramètres des services',vacSvc:'Vacations des services',bilanNotes:'Bilan social',alertesTraitees:'Alertes',
+ params:'Paramètres',listes:'Listes',grille:'Grilles de paie',entete:'En-tête des documents',etab:'Établissement',pecCat:'Prises en charge',baremeHors:'Barème des gardes'};
+const SV_IGN=new Set(['audit','journalPaie','suivi','corrections','version','seedDate','__forme','rhDemo']),svIgn=k=>SV_IGN.has(k)||/^seq|V\d+$|^paieLeg1$|^rubFonc1$/.test(k);
+const SV_CH={prenom:'Prénom',nom:'Nom',mat:'Matricule',tel:'Téléphone',email:'Adresse électronique',sexe:'Sexe',naissance:'Date de naissance',entree:'Date d\'entrée',serviceId:'Service',posteId:'Catégorie',fonctionId:'Poste',
+ statut:'Statut',typeContrat:'Type de contrat',univ:'Statut universitaire',matrimoniale:'Situation matrimoniale',enfants:'Enfants',salaireBase:'Salaire de base',situation:'Situation',dateDepart:'Date de départ',
+ debut:'Début',fin:'Fin',date:'Date',type:'Type',motif:'Motif',arr:'Arrivée',dep:'Départ',montant:'Montant',actif:'Actif',lignes:'Lignes',etat:'État',paie:'Montants propres',rubOn:'Rubriques de l\'agent',parts:'Parts fiscales',cadre:'Cadre',regimeRetraite:'Régime de retraite',conjointRevenu:'Conjoint avec revenus'};
+let SV=null,SV_DB=null;
+function svRows(){const m=clRows(DB);for(const k of[...m.keys()]){const c=k.slice(2,k.indexOf(CL_SEP));if(svIgn(c))m.delete(k)}return m}
+function svBase(){try{SV=svRows();SV_DB=DB}catch(e){SV=null}}
+const svVal=(k,v)=>{if(v==null||v==='')return'—';if(k==='serviceId')return(svc(v)||{}).nom||v;if(k==='posteId')return(poste(v)||{}).nom||v;if(k==='agentId'){const a=ag(v);return a?nomA(a):v}
+ if(typeof v==='boolean')return v?'oui':'non';if(typeof v==='object'){const s=JSON.stringify(v);return s.length>70?s.slice(0,67)+'…':s}const s=String(v);return/^\d{4}-\d{2}-\d{2}$/.test(s)?dfr(s):s.length>70?s.slice(0,67)+'…':s};
+function svCible(c,id,x){try{x=x||{};if(c==='agents')return`${nomA(x)} (${x.mat||id})`;const a=x.agentId&&ag(x.agentId);
+ if(c==='planning'||c==='bulletins'){const[aid,p]=String(id).split('|');const b=ag(aid);return`${b?nomA(b):aid}${p?' — '+(p.length===7?moisLib(p):dfr(p)):''}`}
+ if(a)return`${nomA(a)}${x.date?' — '+dfr(x.date):x.debut?' — '+dfr(x.debut):''}`;return x.nom||x.titre||x.objet||x.libelle||(c==='params'||c==='listes'||c==='grille'||c==='entete'?'':String(id))}catch(e){return String(id)}}
+function svDiff(a,b,pre=''){if(JSON.stringify(a)===JSON.stringify(b))return[];const plain=o=>o&&typeof o==='object'&&!Array.isArray(o);
+ if(!plain(a)||!plain(b)||pre.split('.').length>2)return[[pre||'valeur',a,b]];const out=[];for(const k of new Set([...Object.keys(a),...Object.keys(b)]))out.push(...svDiff(a[k],b[k],pre?pre+'.'+k:k));return out}
+function svBul(A,B){const tot=o=>{if(!o||!o.lignes)return null;const g=o.lignes.filter(l=>l.type==='gain').reduce((t,l)=>t+(+l.montant||0),0),r=o.lignes.filter(l=>l.type==='retenue').reduce((t,l)=>t+(+l.montant||0),0);return{g,r,n:g-r}};
+ const ta=tot(A),tb=tot(B),m=o=>new Map((o&&o.lignes||[]).map(l=>[l.type+'|'+(l.rubId||l.nom)+'|'+l.nom,+l.montant||0])),ma=m(A),mb=m(B),d=[];
+ for(const k of new Set([...ma.keys(),...mb.keys()])){const v1=ma.get(k),v2=mb.get(k);if(v1!==v2)d.push(`${k.split('|')[2]} : ${v1==null?'—':num(v1)} → ${v2==null?'supprimée':num(v2)}`)}
+ if(A&&B&&A.statut!==B.statut)d.unshift(`État : ${A.statut} → ${B.statut}`);
+ const t=tb?`Brut ${num(tb.g)}, retenues ${num(tb.r)}, net ${num(tb.n)}`:ta?`(avant : brut ${num(ta.g)}, net ${num(ta.n)})`:'';return(A&&B?d.slice(0,10).join(' ; ')+(d.length?' — ':''):'')+t}
+function svTrace(){try{if(!SV||SV_DB!==DB)return svBase();const now=svRows(),ch=[];
+ for(const[k,j]of now)if(SV.get(k)!==j)ch.push([k,SV.get(k),j]);for(const[k,j]of SV)if(!now.has(k))ch.push([k,j,undefined]);SV=now;if(!ch.length)return;
+ DB.suivi=DB.suivi||[];const t=new Date().toISOString(),par=who(),add=e=>DB.suivi.unshift({id:uid(),t,par,...e});
+ if(ch.length>150){const n={};ch.forEach(([k])=>{const c=k.slice(2,k.indexOf(CL_SEP));n[c]=(n[c]||0)+1});add({mod:'Plusieurs modules',action:'Modification en masse',cible:`${ch.length} enregistrements`,det:Object.entries(n).map(([c,v])=>`${SV_MOD[c]||c} : ${v}`).join(' ; ')})}
+ else ch.forEach(([k,o,n])=>{const ty=k[0],c=k.slice(2,k.indexOf(CL_SEP)),id=k.slice(k.indexOf(CL_SEP)+1),A=o===undefined?undefined:JSON.parse(o),B=n===undefined?undefined:JSON.parse(n),x=B||A;
+  const action=A===undefined?'Création':B===undefined?'Suppression':'Modification';let det='';
+  if(c==='bulletins'){det=svBul(A,B);add({mod:SV_MOD[c],action:A===undefined?'Bulletin rendu modifiable':B===undefined?'Bulletin rétabli (calcul automatique)':'Modification',cible:svCible(c,id,x),det});return}
+  if(action==='Modification'){const d=svDiff(A,B);det=d.slice(0,12).map(([f,v1,v2])=>`${SV_CH[f]||f} : ${svVal(f.split('.').pop(),v1)} → ${svVal(f.split('.').pop(),v2)}`).join(' ; ')+(d.length>12?` ; … (${d.length-12} autre(s))`:'')}
+  else if(x&&typeof x==='object'&&!Array.isArray(x))det=Object.entries(x).filter(([f,v])=>v!==''&&v!=null&&!/^(id|pin)$/.test(f)&&typeof v!=='object').slice(0,8).map(([f,v])=>`${SV_CH[f]||f} : ${svVal(f,v)}`).join(' ; ');
+  add({mod:SV_MOD[c]||c,action,cible:svCible(c,id,x),det:det.slice(0,700)})});
+ if(DB.suivi.length>4000)DB.suivi.length=4000}catch(e){SV=null}}
+CL_UNSHIFT.push('suivi');CL_AJOUT.push('suivi');
+/* save() est remplacé en mode en ligne : on l'enveloppe au moment où il est appelé */
+const SV_SAVE0=save;save=function(){svTrace();return SV_SAVE0.apply(this,arguments)};
+init=(f=>function(){const r=f.apply(this,arguments);svBase();return r})(init);
+
+/* ---------- Écran ---------- */
+function svEntrees(){const A=[...(DB.suivi||[]).map(x=>({...x,src:'auto'})),...DB.journalPaie.map(j=>({t:j.t,par:j.par,mod:'Paie',action:j.action,cible:[j.agentId?nomA(ag(j.agentId)||{prenom:'',nom:j.agentId}):'',j.ym?moisLib(j.ym):''].filter(Boolean).join(' — '),det:j.detail,src:'op'})),
+ ...DB.audit.map(x=>({t:x.t,par:x.par,mod:'Opérations',action:x.action,cible:'',det:x.detail,src:'op'}))];return A.sort((x,y)=>String(y.t).localeCompare(String(x.t)))}
+function suiviPage(){const R=S.sv=S.sv||{n:300},all=svEntrees(),q=kNorm(R.q||'');
+ const L=all.filter(x=>(!R.du||x.t.slice(0,10)>=R.du)&&(!R.au||x.t.slice(0,10)<=R.au)&&(!R.mod||x.mod===R.mod)&&(!R.par||x.par===R.par)&&(!R.act||x.action===R.act)&&(!q||kNorm(`${x.par} ${x.mod} ${x.action} ${x.cible} ${x.det}`).includes(q)));
+ const mods=[...new Set(all.map(x=>x.mod))].sort(),pars=[...new Set(all.map(x=>x.par))].sort(),hh=t=>{const d=new Date(t);return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`};
+ S.tsv=[['Date','Heure','Auteur','Module','Action','Élément concerné','Détail'],...L.map(x=>[dfr(x.t.slice(0,10)),hh(x.t),x.par,x.mod,x.action,x.cible||'',x.det||''])];S.tsvNom='Suivi_des_modifications';
+ const f=(k,l,o)=>`<label class="field" style="min-width:170px">${l}<select data-chg="svF" data-k="${k}"><option value="">Tous</option>${o.map(v=>`<option${v===R[k]?' selected':''}>${esc(v)}</option>`).join('')}</select></label>`;
+ return`<div class="card"><div class="row" style="flex-wrap:wrap;gap:8px;margin-bottom:10px"><label class="field" style="min-width:220px">Rechercher<input id="sv_q" value="${esc(R.q||'')}" data-chg="svF" data-k="q" placeholder="agent, montant, rubrique…"></label>
+ <label class="field">Du<input type="date" data-chg="svF" data-k="du" value="${R.du||''}"></label><label class="field">Au<input type="date" data-chg="svF" data-k="au" value="${R.au||''}"></label>${f('mod','Module',mods)}${f('par','Auteur',pars)}${f('act','Action',['Création','Modification','Suppression'])}
+ <button class="btn g s" style="align-self:flex-end;margin-bottom:6px" data-act="svRaz">Effacer les filtres</button></div>
+ <div class="grid kpis">${[[L.length,'Modifications trouvées'],[new Set(L.map(x=>x.par)).size,'Auteurs'],[L.length?fdt(L[0].t):'—','La plus récente'],[(DB.suivi||[]).length+DB.journalPaie.length+DB.audit.length,'Entrées conservées']].map(([v,l],i)=>`<div class="kpi" style="cursor:default"><b style="font-size:${i===2?15:22}px">${v}</b><span>${l}</span></div>`).join('')}</div></div>
+ <div class="card"><h2>Suivi des modifications</h2>${table(['Date','Heure','Auteur','Module','Action','Élément concerné','Détail'],L.slice(0,R.n).map(x=>`<tr><td>${dfr(x.t.slice(0,10))}</td><td>${hh(x.t)}</td><td>${esc(x.par)}</td><td>${esc(x.mod)}</td><td><span class="pill ${x.action==='Création'?'ok':x.action==='Suppression'?'crit':'info'}">${esc(x.action)}</span></td><td><b>${esc(x.cible||'')}</b></td><td style="white-space:normal;max-width:520px">${esc(x.det||'')}</td></tr>`),'Aucune modification pour ces critères.')}
+ ${L.length>R.n?`<div class="row" style="margin-top:10px"><span class="sub">${R.n} sur ${L.length} affichées. L'export Excel contient tout.</span><button class="btn g s" data-act="svPlus">Afficher 300 de plus</button></div>`:''}
+ <div class="sub" style="margin-top:8px">Toute modification enregistrée dans l'application (agents, pointage, congés, planning, paie, paramètres…) est inscrite ici avec son auteur, la date et l'heure ; les opérations de paie et d'administration y figurent aussi avec leur motif.</div></div>`}
+Object.assign(CHG,{svF:el=>{const R=S.sv=S.sv||{n:300};R[el.dataset.k]=el.value;R.n=300;render();if(el.dataset.k==='q'){const i=document.getElementById('sv_q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}}});
+Object.assign(ACT,{svRaz:()=>{S.sv={n:300};render()},svPlus:()=>{S.sv.n+=300;render()}});
+
+/* ---------- Modifier un montant (gain ou retenue) depuis le journal de paie, le récap ou le bulletin ---------- */
+function plRafraichir(a,L){try{const brut=L.filter(x=>x.type==='gain').reduce((t,x)=>t+(+x.montant||0),0),base=L.filter(x=>x.type==='gain'&&x.rubId==='base').reduce((t,x)=>t+(+x.montant||0),0),G=paieLegale(a,brut,base);
+ ['ipres','ipm','impot','trimf'].forEach(rid=>{const ls=L.filter(x=>x.type==='retenue'&&x.rubId===rid);if(!ls.length||ls.some(x=>x.manuel))return;const fr=G.ret[rid]||[];if(fr.length===ls.length)ls.forEach((x,i)=>{x.montant=fr[i][1];x.nom=fr[i][0]})})}catch(e){}}
+setMontant=function(a,ym,rid,v,ou){const b=bulletin(a,ym);if(b.statut==='archivé')return{ok:false,msg:'Ce bulletin est archivé : la paie de ce mois est arrêtée.'};
+ const r=DB.rubriques.find(x=>x.id===rid),type=r?r.type:'gain';let L=b.rec?b.rec.lignes.map(l=>({...l})):b.brut?lignesDe(b).map(({k,...l})=>l):lignesNeuves(a,ym);
+ const ls=L.filter(x=>x.type===type&&x.rubId===rid),av=ls.reduce((t,x)=>t+(+x.montant||0),0);if(av===v)return{ok:true};
+ if(ls.length){ls[0].montant=v;if(ls.length>1){ls[0].nom=r?r.nom:ls[0].nom;L=L.filter(x=>!ls.slice(1).includes(x))}if(type==='retenue')ls[0].manuel=true}
+ else if(type==='gain')L.splice(L.filter(x=>x.type==='gain').length,0,{rubId:rid,nom:r?r.nom:rid,type:'gain',montant:v});else L.push({rubId:rid,nom:r?r.nom:rid,type:'retenue',montant:v,manuel:true});
+ const brut=L.filter(x=>x.type==='gain').reduce((t,x)=>t+(+x.montant||0),0);L.forEach(x=>{if(x.type==='retenue'&&x.pct!=null&&!x.manuel)x.montant=Math.round(brut*x.pct/100)});plRafraichir(a,L);
+ DB.bulletins[a.id+'|'+ym]={lignes:L,ng:b.ng,statut:'modifié',modifiePar:who(),modifieLe:new Date().toISOString()};
+ jp(a.id,ym,'Montant modifié',`${r?r.nom:rid} : ${num(av)} → ${num(v)} — saisi dans ${ou||'le journal de paie'}`);save();return{ok:true}};
+bulTot=(f=>function(){const B=S.bul;if(B&&B.agentId)plRafraichir(ag(B.agentId),B.lignes);return f.apply(this,arguments)})(bulTot);
+CHG.rrEdit=el=>{const a=ag(el.dataset.id),v=Math.max(0,Math.round(+el.value||0)),r=setMontant(a,el.dataset.ym,el.dataset.r,v,'le récap par rubrique');if(!r.ok)toast(r.msg,'err');else toast(`${nomA(a)} — ${moisLib(el.dataset.ym)} : montant enregistré, bulletin « modifié ».`,'ok');render()};
+CHG.rr0=el=>{S.rem.rr0=el.checked;render()};
 
 function init(){
  load();S.profil=profils()[0];
