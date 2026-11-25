@@ -1,0 +1,2 @@
+-- Voir la migration « rhospi_messagerie » appliquée le 25/11/2026 : fonction rh_mes_cles, lecture et écriture des messages par les agents, pièces jointes.
+-- Les agents lisent les messages qui leur sont adressés (eux-mêmes, leur service, leur poste, tous les agents, tout le personnel) et ceux qu'ils ont envoyés.
