@@ -49,3 +49,11 @@ using (bucket_id = 'rh-fichiers'
   and (split_part(storage.filename(name),'_',1) = public.rh_agent((storage.foldername(name))[1])
        or exists (select 1 from public.rh_docs d where d.org_id = (storage.foldername(name))[1] and d.coll = 'a:documents'
                   and d.id = storage.filename(name) and d.data->>'agentId' = public.rh_agent(d.org_id))));
+-- Dépôt de fichiers par l'agent (envoi avec remplacement) et taille maximale portée à 25 Mo.
+drop policy if exists rh_fichiers_agent_modif on storage.objects;
+create policy rh_fichiers_agent_modif on storage.objects for update to authenticated
+using (bucket_id = 'rh-fichiers' and (storage.foldername(name))[1] in (select public.rh_orgs_de(array['agent']))
+  and split_part(storage.filename(name),'_',1) = public.rh_agent((storage.foldername(name))[1]))
+with check (bucket_id = 'rh-fichiers' and (storage.foldername(name))[1] in (select public.rh_orgs_de(array['agent']))
+  and split_part(storage.filename(name),'_',1) = public.rh_agent((storage.foldername(name))[1]));
+update storage.buckets set file_size_limit = 26214400 where id = 'rh-fichiers';
